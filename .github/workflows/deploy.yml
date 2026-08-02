@@ -1,1 +1,98 @@
+name: Deploy CRM
 
+# Runs on every push to main. The two jobs are independent and only run
+# when files relevant to them changed — editing index.html won't trigger
+# a Lambda redeploy, and editing the backend won't touch S3/CloudFront.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-backend:
+    name: Deploy Lambda
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[skip backend]') == false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if backend files changed
+        id: changed
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'lambda/**'
+
+      - name: Set up Node.js
+        if: steps.changed.outputs.backend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install production dependencies
+        if: steps.changed.outputs.backend == 'true'
+        working-directory: lambda
+        run: npm ci --omit=dev
+
+      - name: Zip function
+        if: steps.changed.outputs.backend == 'true'
+        working-directory: lambda
+        run: zip -r ../function.zip . -x "*.git*"
+
+      - name: Configure AWS credentials
+        if: steps.changed.outputs.backend == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update Lambda function code
+        if: steps.changed.outputs.backend == 'true'
+        run: |
+          aws lambda update-function-code \
+            --function-name "${{ secrets.LAMBDA_FUNCTION_NAME }}" \
+            --zip-file fileb://function.zip
+
+  deploy-frontend:
+    name: Deploy Frontend (S3 + CloudFront)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if frontend files changed
+        id: changed
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'index.html'
+              - 'BTC-Voucher.html'
+
+      - name: Configure AWS credentials
+        if: steps.changed.outputs.frontend == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload to S3
+        if: steps.changed.outputs.frontend == 'true'
+        run: |
+          aws s3 cp index.html "s3://${{ secrets.S3_BUCKET }}/index.html"
+          if [ -f BTC-Voucher.html ]; then
+            aws s3 cp BTC-Voucher.html "s3://${{ secrets.S3_BUCKET }}/BTC-Voucher.html"
+          fi
+
+      - name: Invalidate CloudFront cache
+        if: steps.changed.outputs.frontend == 'true'
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/*"
