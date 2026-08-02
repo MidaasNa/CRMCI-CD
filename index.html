@@ -1,1 +1,3108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Travel Operations Ticketing - LGT Hotel Stays</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --navy:#003366;
+  --navy-deep:#04213f;
+  --navy-soft:#e6edf5;
+  --gold:#D4AF37;
+  --gold-soft:#f7ecc9;
+  --ink:#10161c;
+  --ink-muted:#46525c;
+  --bg:#eef1f6;
+  --surface:#ffffff;
+  --border:#dde3ea;
+  --radius:10px;
+  --radius-sm:6px;
+  --shadow-sm:0 1px 2px rgba(15,32,55,.06), 0 1px 1px rgba(15,32,55,.05);
+  --shadow-md:0 6px 16px rgba(15,32,55,.10), 0 1px 3px rgba(15,32,55,.06);
+  --green:#1f7a4d;
+  --green-bg:#e6f4ec;
+  --amber:#b45f06;
+  --amber-bg:#fdf0e3;
+  --purple:#6b3fa0;
+  --purple-bg:#f1e9f8;
+  --blue:#1d5a96;
+  --blue-bg:#e7f0fa;
+  --red:#a4262c;
+  --red-bg:#fbe9e9;
+}
 
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);margin:0;padding:22px;line-height:1.45}
+
+h1{font-family:Georgia,'Times New Roman',serif;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);color:#fff;padding:16px 20px;border-radius:var(--radius);margin:0 0 18px;font-weight:600;letter-spacing:.3px;box-shadow:var(--shadow-md);border-bottom:3px solid var(--gold)}
+h2{font-family:Georgia,'Times New Roman',serif;color:var(--navy);font-weight:600;letter-spacing:.2px;margin-top:0}
+
+.card{background:var(--surface);padding:18px 20px;border-radius:var(--radius);margin-bottom:16px;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.field{display:flex;flex-direction:column}
+label{font-weight:600;margin-bottom:5px;font-size:12px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.4px}
+
+input,select,textarea{padding:9px 10px;font-size:14px;font-weight:500;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;color:var(--ink);background:#fff;transition:border-color .15s ease,box-shadow .15s ease}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px var(--navy-soft)}
+
+button{padding:9px 16px;margin-right:5px;cursor:pointer;border:1px solid var(--border);border-radius:var(--radius-sm);background:#f4f6f9;color:var(--ink);font-family:inherit;font-weight:600;font-size:13.5px;transition:background .15s ease,box-shadow .15s ease,transform .05s ease}
+button:hover{background:#e8ecf1}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+
+table{width:100%;border-collapse:collapse;background:var(--surface);font-size:13px;border-radius:var(--radius-sm);overflow:hidden}
+th,td{border:1px solid var(--border);padding:9px 8px;text-align:left;color:var(--ink);font-weight:500}
+/* All free-text inputs show in uppercase as the user types — the JS layer
+   also enforces .toUpperCase() on the stored value so nothing slips through
+   in lowercase even if CSS is overridden (e.g. mobile browsers). Date inputs
+   are excluded since their format (22-June-26) must keep mixed case. */
+input[type="text"],input:not([type]),select.uppercase-sel{text-transform:uppercase}
+th{background:var(--gold);color:var(--navy-deep);font-weight:700;letter-spacing:.2px;text-transform:uppercase;font-size:11.5px}
+tbody tr:nth-child(even){background:#fbfcfe}
+tbody tr:hover{background:#f4f7fb}
+
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:15px}
+.stat{background:var(--surface);padding:14px 10px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.stat b{font-size:22px;display:block;color:var(--navy);font-family:Georgia,serif}
+#exportBtn{background:var(--green);color:#fff;border-color:var(--green)}
+#exportBtn:hover{background:#195c3c}
+#refreshBtn{background:var(--blue);color:#fff;border-color:var(--blue)}
+#refreshBtn:hover{background:#164a7a}
+#clearAllBtn{background:var(--red);color:#fff;border-color:var(--red)}
+#clearAllBtn:hover{background:#861f24}
+#logoutBtn{background:#4a5561;color:#fff;border-color:#4a5561}
+#logoutBtn:hover{background:#39424c}
+#syncStatus{margin-left:10px;font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:20px}
+#syncStatus.sync-live{color:var(--green);background:var(--green-bg)}
+#syncStatus.sync-syncing{color:var(--amber);background:var(--amber-bg)}
+#syncStatus.sync-error{color:var(--red);background:var(--red-bg)}
+
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab-btn{background:var(--surface);border:1px solid var(--border);border-bottom:none;padding:11px 18px;border-radius:8px 8px 0 0;font-weight:600;color:var(--navy);transition:background .15s ease,color .15s ease}
+.tab-btn:hover{background:var(--navy-soft)}
+.tab-btn.active{background:var(--navy);color:white;border-color:var(--navy)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.badge{display:inline-block;font-size:11px;padding:4px 10px;border-radius:20px;color:white;font-weight:700;letter-spacing:.2px}
+.badge.Open{background:var(--blue)}
+.badge.Pending{background:var(--amber)}
+.badge.WaitingforClientResponse{background:var(--purple)}
+.badge.Confirmed{background:var(--green)}
+.badge.Lost{background:var(--red)}
+
+#loginScreen{max-width:380px;margin:100px auto;text-align:center}
+#loginScreen h1{margin-bottom:22px}
+#loginScreen input{width:100%;margin-bottom:12px;box-sizing:border-box}
+#loginScreen button{width:100%;background:var(--navy);color:white;padding:13px;font-size:15px;border-color:var(--navy)}
+#loginScreen button:hover{background:var(--navy-deep)}
+#loginError{color:var(--red);font-size:13px;margin-top:8px;min-height:18px}
+#whoami{float:right;font-size:14px;color:var(--ink-muted)}
+#whoami b{color:#0066ff;font-size:15px}
+
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}
+.dash-card h3{margin:0 0 10px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:7px;font-family:Georgia,serif;font-weight:600}
+.dash-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px}
+.dash-row .dash-name{flex:1;min-width:0;overflow-wrap:break-word;font-weight:600;color:var(--ink)}
+.dash-row .dash-stats{white-space:nowrap;flex-shrink:0;color:var(--ink-muted)}
+.dash-row b{color:var(--green)}
+
+.chart-card{background:#fbfcfe;border:1px solid var(--border);border-radius:var(--radius);padding:15px;box-shadow:var(--shadow-sm)}
+.chart-card h3{margin:0 0 10px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:7px;font-size:15px;font-family:Georgia,serif;font-weight:600}
+.chart-card .chart-wrap{display:flex;justify-content:center;align-items:center;height:200px}
+.chart-card .chart-wrap svg{width:auto;height:100%}
+.chart-card .chart-total{text-align:center;font-size:12px;color:var(--ink-muted);margin-top:8px}
+.chart-legend{margin-top:10px;font-size:12px}
+.chart-legend-row{display:flex;align-items:center;gap:6px;padding:3px 0}
+.chart-legend-swatch{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+.chart-legend-label{flex:1;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chart-legend-value{color:var(--ink-muted);font-weight:700;flex-shrink:0}
+.chart-period-btn{background:var(--surface);border:1px solid var(--border);padding:6px 14px;border-radius:var(--radius-sm);font-weight:600;color:var(--navy);cursor:pointer;margin-left:6px}
+.chart-period-btn.active{background:var(--navy);color:white;border-color:var(--navy)}
+.scope-btn{background:var(--surface);border:1px solid var(--border);padding:5px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;margin-right:6px}
+.scope-btn.active{background:var(--navy);color:white;border-color:var(--navy)}
+
+.main-layout{display:flex;gap:15px;align-items:flex-start}
+.form-card{flex:1;min-width:0}
+.pending-panel{width:300px;flex-shrink:0;max-height:600px;overflow-y:auto}
+.pending-panel h2{margin:0 0 10px;font-size:16px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:7px;font-family:Georgia,serif}
+.pending-item{border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;margin-bottom:8px;background:#fafbfc;transition:box-shadow .15s ease}
+.pending-item:hover{box-shadow:var(--shadow-sm)}
+.pending-item .pi-top{display:flex;justify-content:space-between;font-weight:700;font-size:13px}
+.pending-item .pi-meta{font-size:12px;color:var(--ink-muted);margin-top:4px}
+.pending-empty{color:#5c6874;font-size:13px;text-align:center;padding:20px 0}
+
+table select{padding:4px;font-size:12px;width:100%}
+input.date-error{border:2px solid var(--red) !important;background:var(--red-bg)}
+table input.inline-handled{padding:4px;font-size:12px;width:100%;border:1px solid var(--border)}
+td.lost-row{background:var(--red-bg)}
+tr.overdue-row{background:#fff6f0}
+tr.overdue-row td{border-color:#f3d4c0}
+.overdue-badge{display:inline-block;background:var(--red);color:white;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;white-space:nowrap}
+.btn-mark-lost{font-size:11px;padding:3px 7px;background:var(--red);color:white;border:none;border-radius:4px;cursor:pointer;margin-left:4px}
+
+#dashboardPrevDayBtn:disabled, #dashboardNextDayBtn:disabled, #dashboardTodayBtn:disabled{
+  background:#ccc;color:#4a5560;cursor:not-allowed
+}
+
+@media (max-width:900px){
+ .grid{grid-template-columns:repeat(2,1fr)}
+ .stats{grid-template-columns:repeat(3,1fr)}
+ .main-layout{flex-direction:column}
+ .pending-panel{width:100%;max-height:300px}
+}
+.modal-overlay{position:fixed;inset:0;background:rgba(4,33,63,0.55);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-box{background:var(--surface);border-radius:var(--radius);padding:24px 26px;width:360px;max-width:90vw;box-shadow:var(--shadow-md);max-height:85vh;overflow:auto}
+.modal-box .field{margin-bottom:10px}
+.modal-box input,.modal-box select{width:100%;box-sizing:border-box}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen" class="card">
+  <h1 style="background:none;color:#003366;padding:0">Travel Operations Login</h1>
+  <input id="loginName" placeholder="Your name">
+  <input id="loginPassword" type="password" placeholder="Password">
+  <button onclick="doLogin()">Log In</button>
+  <div id="loginError"></div>
+</div>
+
+<!-- ============ MAIN APP (hidden until logged in) ============ -->
+<div id="app" style="display:none">
+
+<!-- OVERDUE NOTIFICATION BANNER — shown automatically when overdue
+     tickets are detected after a refresh. Stays visible until dismissed
+     or the user acts on it. Does NOT auto-move anything. -->
+<div id="overdueNotification" style="display:none;background:#b71c1c;color:white;padding:12px 18px;border-radius:0 0 8px 8px;margin-bottom:10px;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-size:18px">⚠️</span>
+  <span id="overdueNotifText" style="flex:1;font-weight:bold;font-size:14px"></span>
+  <button id="overdueBannerBtn" onclick="reviewOverdue()" style="background:white;color:#b71c1c;border:none;padding:6px 14px;border-radius:5px;font-weight:bold;cursor:pointer;font-size:13px">Review &amp; Mark Lost</button>
+  <button onclick="dismissOverdueNotif()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 12px;border-radius:5px;cursor:pointer;font-size:13px">Dismiss</button>
+</div>
+
+<!-- BLOCKED PAYMENT DEADLINE BANNER — shows starting 2 days before a
+     Blocked booking's payment deadline. Deliberately has NO dismiss
+     button — per spec, this only goes away once the booking is marked
+     Paid, from the Blocked tab. -->
+<div id="blockedDeadlineNotification" style="display:none;background:#e65100;color:white;padding:12px 18px;border-radius:0 0 8px 8px;margin-bottom:10px;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-size:18px">💳</span>
+  <span id="blockedDeadlineNotifText" style="flex:1;font-weight:bold;font-size:14px"></span>
+  <button onclick="switchTab('blockedTab')" style="background:white;color:#e65100;border:none;padding:6px 14px;border-radius:5px;font-weight:bold;cursor:pointer;font-size:13px">Go to Blocked Tab</button>
+</div>
+
+<h1>Travel Operations Ticketing - LGT Hotel Stays
+  <span id="whoami"></span>
+</h1>
+
+<div class="stats">
+<div class="stat"><b id="tot">0</b>Total</div>
+<div class="stat"><b id="opn">0</b>Open</div>
+<div class="stat"><b id="pen">0</b>Pending</div>
+<div class="stat"><b id="wai">0</b>Waiting on Client</div>
+<div class="stat"><b id="con">0</b>Confirmed</div>
+<div class="stat"><b id="lst">0</b>Lost</div>
+</div>
+
+<div class="card">
+<input id="search" placeholder="Search..." oninput="onSearchInput()" style="width:220px">
+<button id="refreshBtn" onclick="refreshFromSheet(true)">🔄 Refresh Now</button>
+<button id="exportBtn" onclick="exportToExcel()">⬇ Export to Excel</button>
+<button id="overdueBtn" onclick="reviewOverdue()" style="background:#b71c1c;color:white;display:none">⚠ Review Overdue</button>
+<span id="syncStatus" class="sync-syncing">⏳ Connecting…</span>
+<button id="logoutBtn" onclick="logout()" style="float:right">Log Out</button>
+<button id="changePasswordBtn" onclick="openChangePasswordModal()" style="float:right;margin-right:8px">🔑 Change Password</button>
+<!-- Hidden for now — uncomment to bring back the manager-only "Clear ALL records" button.
+<button id="clearAllBtn" onclick="clearAllFromSheet()" style="float:right;margin-right:8px" class="manager-only">🗑 Clear ALL records</button>
+-->
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="newTab" onclick="switchTab('newTab')">+ New Request</button>
+  <button class="tab-btn" data-tab="ticketsTab" onclick="switchTab('ticketsTab')">Tickets</button>
+  <button class="tab-btn" data-tab="lostTab" onclick="switchTab('lostTab')">Lost</button>
+  <button class="tab-btn" data-tab="confirmedTab" onclick="switchTab('confirmedTab')">Confirmed</button>
+  <button class="tab-btn" data-tab="blockedTab" onclick="switchTab('blockedTab')">🔒 Blocked</button>
+  <button class="tab-btn" data-tab="reconfirmTab" onclick="switchTab('reconfirmTab')">📞 Reconfirmations</button>
+  <button class="tab-btn manager-only" data-tab="dashboardTab" onclick="switchTab('dashboardTab')">📊 Dashboard</button>
+  <button class="tab-btn manager-only" data-tab="chartsTab" onclick="switchTab('chartsTab')">📈 Charts</button>
+  <button class="tab-btn" data-tab="btcVoucherTab" onclick="switchTab('btcVoucherTab')">🎫 BTC-Voucher</button>
+  <button class="tab-btn user-admin-only" data-tab="usersAdminTab" onclick="switchTab('usersAdminTab')" onmousedown="loadUsersAdmin()">👤 Users</button>
+</div>
+
+<!-- NEW REQUEST TAB -->
+<div id="newTab" class="tab-panel active">
+<div class="main-layout">
+<div class="card form-card">
+<div class="grid">
+<div class="field"><label>Date</label><input id="date" readonly></div>
+<div class="field"><label>Client</label><input id="client"></div>
+<div class="field"><label>TR Number</label><input id="tr"></div>
+<div class="field"><label>Priority</label>
+  <select id="priority"><option>Normal</option><option>Urgent</option></select></div>
+<div class="field"><label>Assign To</label><select id="assignTo"><option value="">Loading…</option></select></div>
+</div>
+<p style="color:#3f4750;font-size:12px">City, Country, Vendor, Check-in/Check-out and Booking details will be filled in by whoever handles this request. The request is created directly as <b>Pending</b>, assigned to whoever you pick above.</p>
+<button onclick="saveRecord()" style="background:#003366;color:white;padding:10px 20px">Submit Request</button>
+</div>
+
+<div class="card pending-panel">
+<h2>Pending Enquiries</h2>
+<div id="pendingList"></div>
+</div>
+</div>
+</div>
+
+<!-- TICKETS TAB -->
+<div id="ticketsTab" class="tab-panel">
+<div class="card" style="padding-bottom:8px">
+  <span style="font-size:13px;color:#3a424b;font-weight:bold;margin-right:10px">View:</span>
+  <button class="scope-btn" data-scope="mine" onclick="setTicketScope('mine')">My Tickets</button>
+  <button class="scope-btn active" data-scope="branch" onclick="setTicketScope('branch')">My Branch</button>
+  <button class="scope-btn allbranch-only" data-scope="all" onclick="setTicketScope('all')" style="display:none">All Company</button>
+  <span id="scopeNote" style="font-size:12px;color:#4a5560;margin-left:12px"></span>
+</div>
+<div class="card" style="overflow-x:auto;margin-top:0">
+<table>
+<thead>
+<tr>
+<th>Date</th><th>Client</th><th>TR Number</th><th>City</th><th>Country</th>
+<th>Check In</th><th>Check Out</th><th>Nights</th>
+<th>Status</th><th>Handled By</th><th>Branch</th><th>Action</th>
+</tr>
+</thead>
+<tbody id="ticketsBody"></tbody>
+</table>
+<p id="ticketsEmpty" style="display:none;color:#4a5560;text-align:center;padding:20px">No tickets to show.</p>
+</div>
+</div>
+
+<!-- LOST TAB -->
+<div id="lostTab" class="tab-panel">
+<p style="color:#3f4750">Bookings whose Check-In date has passed without being Confirmed. Status is auto-set to <b>Lost</b>.</p>
+<div class="card" style="overflow-x:auto">
+<table>
+<thead>
+<tr>
+<th>Date</th><th>Client</th><th>TR Number</th><th>City</th><th>Country</th>
+<th>Check In</th><th>Check Out</th><th>Nights</th>
+<th>Status</th><th>Handled By</th><th>Branch</th>
+</tr>
+</thead>
+<tbody id="lostBody"></tbody>
+</table>
+<p id="lostEmpty" style="display:none;color:#4a5560;text-align:center;padding:20px">No lost bookings. 🎉</p>
+</div>
+</div>
+
+<!-- CONFIRMED TAB -->
+<div id="confirmedTab" class="tab-panel">
+<p style="color:#3f4750">Bookings that have been <b>Confirmed</b>. Delete a ticket individually below.</p>
+<div class="card" style="overflow-x:auto">
+<div id="confirmedFiltersContainer"></div>
+<table>
+<thead>
+<tr>
+<th>Date</th><th>Client</th><th>TR Number</th>
+<th style="max-width:80px">City</th><th style="max-width:80px">Country</th>
+<th>Check In</th><th>Check Out</th><th>Nights</th>
+<th>Status</th><th>Handled By</th><th>Branch</th>
+<th>Confirmation Number</th><th>Invoice Number</th><th>Action</th>
+</tr>
+</thead>
+<tbody id="confirmedBody"></tbody>
+</table>
+<p id="confirmedEmpty" style="display:none;color:#4a5560;text-align:center;padding:20px">No confirmed bookings yet.</p>
+</div>
+</div>
+
+<!-- BLOCKED TAB -->
+<div id="blockedTab" class="tab-panel">
+<p style="color:#3f4750">Every Confirmed or Waiting for Client Response booking appears here with <b>nothing pre-selected</b> — pick <b>On Hold</b> if the company card was used to guarantee/hold the room and still needs settling (this reveals a payment deadline picker, and a banner appears across the app starting 2 days before that date), or <b>Paid</b> if it's already settled. Once a booking's payment status is marked <b>Paid</b>, it drops off this list for good.</p>
+<div class="card" style="overflow-x:auto">
+<div id="blockedFiltersContainer"></div>
+<table>
+<thead>
+<tr>
+<th>Date</th><th>Client</th><th>TR Number</th>
+<th style="max-width:80px">City</th>
+<th>Check In</th><th>Handled By</th><th>Branch</th>
+<th>Payment Status</th><th>Deadline to Pay</th><th>Confirmation Number</th>
+</tr>
+</thead>
+<tbody id="blockedBody"></tbody>
+</table>
+<p id="blockedEmpty" style="display:none;color:#4a5560;text-align:center;padding:20px">Nothing awaiting a payment decision right now.</p>
+</div>
+</div>
+
+<!-- RECONFIRMATIONS TAB -->
+<div id="reconfirmTab" class="tab-panel">
+<p style="color:#3f4750">Confirmed bookings whose Check In is <b>tomorrow</b> appear here — call the hotel to reconfirm, then fill in all three fields below. A row turns green once Reconfirmed, Designation By, and the Hotel Confirmation Number are all filled in. Regardless of whether it was completed or not, a booking automatically drops off this list the day after its Check In date.</p>
+<div class="card" style="overflow-x:auto">
+<div id="reconfirmFiltersContainer"></div>
+<table>
+<thead>
+<tr>
+<th>Date</th><th>Client</th><th>TR Number</th><th>City</th>
+<th>Check In</th><th>Check Out</th><th>Handled By</th><th>Branch</th>
+<th>Reconfirmed</th><th>Designation By</th><th>Hotel Confirmation Number</th>
+</tr>
+</thead>
+<tbody id="reconfirmBody"></tbody>
+</table>
+<p id="reconfirmEmpty" style="display:none;color:#4a5560;text-align:center;padding:20px">No bookings checking in tomorrow.</p>
+</div>
+</div>
+
+<!-- DASHBOARD TAB -->
+<div id="dashboardTab" class="tab-panel">
+<div class="card">
+<h2 style="color:#003366;margin-top:0">Branch-wise Performance
+  <button id="dashboardExportBtn" onclick="exportDashboardToExcel()" style="float:right;font-size:13px">⬇ Download Dashboard</button>
+</h2>
+<div style="display:flex;align-items:center;gap:10px;margin:8px 0 4px">
+  <button id="dashboardPrevDayBtn" onclick="dashboardPrevDay()" style="padding:6px 14px;border-radius:5px;border:none;background:#003366;color:#fff;cursor:pointer;font-size:13px;font-weight:bold">← Previous Day</button>
+  <span id="dashboardDateLabel" style="font-weight:bold;color:#003366;min-width:110px;text-align:center"></span>
+  <button id="dashboardNextDayBtn" onclick="dashboardNextDay()" style="padding:6px 14px;border-radius:5px;border:none;background:#003366;color:#fff;cursor:pointer;font-size:13px;font-weight:bold">Next Day →</button>
+  <button id="dashboardTodayBtn" onclick="dashboardGoToday()" style="padding:6px 14px;border-radius:5px;border:none;background:#D4AF37;color:#003366;cursor:pointer;font-size:13px;font-weight:bold">Today</button>
+</div>
+<p id="dashboardDateNote" style="color:#3f4750;margin-top:-2px"></p>
+<div id="dashboardContent" class="dash-grid"></div>
+</div>
+</div>
+
+<!-- CHARTS TAB -->
+<div id="chartsTab" class="tab-panel">
+<div class="card">
+<h2 style="color:#003366;margin-top:0">Performance Charts
+  <span style="float:right">
+    <button id="chartsPeriodMonth" class="chart-period-btn active" onclick="setChartsPeriod('month')" style="font-size:13px">This Month</button>
+    <input type="month" id="chartsMonthPicker" onchange="setChartsCustomMonth(this.value)" style="margin-left:6px;padding:5px 8px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+    <button id="chartsPeriodAll" class="chart-period-btn" onclick="setChartsPeriod('all')" style="font-size:13px">All-Time</button>
+  </span>
+</h2>
+<p id="chartsRangeNote" style="color:#3f4750;margin-top:-6px"></p>
+<div id="chartsFiltersContainer" style="margin-bottom:6px"></div>
+<div id="chartsGrid" class="dash-grid"></div>
+</div>
+</div>
+
+<!-- BTC-VOUCHER TAB — the voucher generator is a separate, self-contained
+     tool (its own HTML/CSS/JS, loads pdf.js + html2pdf.js). It's embedded
+     via iframe rather than merged inline, since both this CRM and that
+     tool independently define plain selectors like body/input/.field —
+     inlining both into one page would have them silently overriding each
+     other. The iframe keeps them fully isolated with zero collision risk,
+     and needs no changes to the voucher tool's own code. -->
+<div id="btcVoucherTab" class="tab-panel">
+<div class="card" style="padding:0;overflow:hidden">
+<iframe src="BTC-Voucher.html" title="BTC Voucher Generator" style="width:100%;height:85vh;border:none;display:block"></iframe>
+</div>
+</div>
+
+<!-- USERS ADMIN TAB — manager-only. Lets a manager add/edit/delete users
+     and reset anyone's password from the UI, instead of editing the
+     users table directly in the database. -->
+<div id="usersAdminTab" class="tab-panel">
+<div class="card">
+<button onclick="openAddUserModal()" style="background:#003366;color:white;padding:8px 16px">+ Add User</button>
+<span id="usersAdminError" style="color:#b71c1c;font-weight:bold;margin-left:12px"></span>
+<table style="width:100%;margin-top:14px;border-collapse:collapse" id="usersAdminTable">
+<thead>
+<tr style="text-align:left;border-bottom:2px solid var(--border)">
+<th style="padding:6px">Name</th><th style="padding:6px">Role</th><th style="padding:6px">Branch</th>
+<th style="padding:6px">Shift</th><th style="padding:6px">All-Branch</th><th style="padding:6px">Can Mark Lost</th>
+<th style="padding:6px">Can Set Payment</th><th style="padding:6px">Can Manage Users</th><th style="padding:6px">Actions</th>
+</tr>
+</thead>
+<tbody id="usersAdminBody"></tbody>
+</table>
+</div>
+</div>
+
+</div><!-- /#app -->
+
+<!-- CHANGE PASSWORD MODAL — available to any logged-in user, for their own account -->
+<div id="changePasswordModal" class="modal-overlay" style="display:none">
+<div class="modal-box">
+<h2 style="margin-top:0">Change Password</h2>
+<div class="field"><label>Current Password</label><input id="cpCurrent" type="password"></div>
+<div class="field"><label>New Password</label><input id="cpNew" type="password"></div>
+<div class="field"><label>Confirm New Password</label><input id="cpConfirm" type="password"></div>
+<div id="cpError" style="color:#b71c1c;font-weight:bold;min-height:18px"></div>
+<div style="text-align:right;margin-top:10px">
+<button onclick="closeChangePasswordModal()" style="background:#ddd;color:#222">Cancel</button>
+<button onclick="submitChangePassword()" style="background:#003366;color:white">Save</button>
+</div>
+</div>
+</div>
+
+<!-- ADD / EDIT USER MODAL — manager-only -->
+<div id="userFormModal" class="modal-overlay" style="display:none">
+<div class="modal-box">
+<h2 id="userFormTitle" style="margin-top:0">Add User</h2>
+<input type="hidden" id="ufOriginalName">
+<div class="field"><label>Name</label><input id="ufName"></div>
+<div class="field" id="ufPasswordField"><label>Password</label><input id="ufPassword" type="password"></div>
+<div class="field"><label>Role</label>
+  <select id="ufRole"><option>Employee</option><option>Manager</option></select></div>
+<div class="field"><label>Branch</label><input id="ufBranch"></div>
+<div class="field"><label>Shift</label><select id="ufShift"><option>Day</option><option>Night</option></select></div>
+<label style="display:block;margin-top:6px"><input type="checkbox" id="ufAllBranch"> All-Branch Access</label>
+<label style="display:block"><input type="checkbox" id="ufCanMarkLost"> Can Mark Lost</label>
+<label style="display:block"><input type="checkbox" id="ufCanPayment"> Can Change Payment Status</label>
+<label style="display:block"><input type="checkbox" id="ufCanManageUsers"> Can Manage Users (access to this Users page)</label>
+<div id="userFormError" style="color:#b71c1c;font-weight:bold;min-height:18px;margin-top:6px"></div>
+<div style="text-align:right;margin-top:10px">
+<button onclick="closeUserFormModal()" style="background:#ddd;color:#222">Cancel</button>
+<button onclick="submitUserForm()" style="background:#003366;color:white">Save</button>
+</div>
+</div>
+</div>
+
+<!-- RESET PASSWORD MODAL — manager-only, for another user's account -->
+<div id="resetPasswordModal" class="modal-overlay" style="display:none">
+<div class="modal-box">
+<h2 style="margin-top:0">Reset Password</h2>
+<p id="rpTargetLabel" style="font-weight:bold"></p>
+<input type="hidden" id="rpTargetName">
+<div class="field"><label>New Password</label><input id="rpNew" type="password"></div>
+<div class="field"><label>Confirm New Password</label><input id="rpConfirm" type="password"></div>
+<div id="rpError" style="color:#b71c1c;font-weight:bold;min-height:18px"></div>
+<div style="text-align:right;margin-top:10px">
+<button onclick="closeResetPasswordModal()" style="background:#ddd;color:#222">Cancel</button>
+<button onclick="submitResetPassword()" style="background:#003366;color:white">Save</button>
+</div>
+</div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIG
+   ===================================================================== */
+const API_URL = 'https://3fluoke2v2.execute-api.ap-south-2.amazonaws.com/bookings';
+const AUTO_REFRESH_MS = 15000;
+
+const STATUS_FLOW = ['Pending','Waiting for Client Response','Confirmed'];
+
+let data = [];
+let currentUser = null; // { name, role, branch }
+let authToken = null; // JWT returned by 'login' — sent as Authorization: Bearer <token> on every request
+let isSyncing = false;
+let activeTab = 'newTab';
+let chartsPeriod = 'month'; // 'month' | 'all' | 'custom'
+let chartsCustomMonth = null; // 'YYYY-MM', set when chartsPeriod === 'custom'
+let ticketViewScope = 'branch'; // 'mine' | 'branch' | 'all'
+
+/* ---------------------------------------------------------------------
+   AUTH
+   --------------------------------------------------------------------- */
+
+function doLogin(){
+  const name = document.getElementById('loginName').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+
+  if (!name || !password) { errEl.textContent = 'Enter both name and password.'; return; }
+  if (!API_URL || API_URL === 'PASTE_YOUR_WEB_APP_URL_HERE') {
+    errEl.textContent = 'App not configured yet: paste your Apps Script Web App URL into API_URL near the top of the script.';
+    return;
+  }
+
+  apiPost({ action:'login', name:name, password:password })
+    .then(res => {
+      currentUser = res.user;
+      authToken = res.token;
+      sessionStorage.setItem('ticketingUser', JSON.stringify(currentUser));
+      sessionStorage.setItem('ticketingToken', authToken);
+      enterApp();
+    })
+    .catch(err => { errEl.textContent = err.message || 'Login failed.'; });
+}
+
+function logout(){
+  currentUser = null;
+  authToken = null;
+  _lastOverdueCount = -1; // reset so banner fires fresh on next login
+  sessionStorage.removeItem('ticketingUser');
+  sessionStorage.removeItem('ticketingToken');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('loginName').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+function enterApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  const who = document.getElementById('whoami');
+  const branchLabel = currentUser.allBranchAccess ? 'All Branches' : currentUser.branch;
+  who.innerHTML = '<b>' + escapeHtml(currentUser.name) + '</b> &middot; ' + escapeHtml(currentUser.role) +
+    (branchLabel ? ' &middot; ' + escapeHtml(branchLabel) : '');
+
+  // manager-only controls
+  document.querySelectorAll('.manager-only').forEach(el => {
+    el.style.display = (currentUser.role === 'Manager') ? '' : 'none';
+  });
+
+  // Users admin page — gated on its own flag, separate from Role, so it
+  // can be restricted to just one or two specific people.
+  document.querySelectorAll('.user-admin-only').forEach(el => {
+    el.style.display = currentUser.canManageUsers ? '' : 'none';
+  });
+
+  // Show "All Company" scope button only for AllBranchAccess users,
+  // since it would show nothing meaningful for branch-locked users.
+  document.querySelectorAll('.allbranch-only').forEach(el => {
+    el.style.display = currentUser.allBranchAccess ? '' : 'none';
+  });
+
+  // Reset ticket view scope on every login — AllBranchAccess users
+  // default to 'branch' (their own branch) rather than dumping the
+  // entire company into view on first load, which would be overwhelming.
+  ticketViewScope = 'branch';
+  setTicketScope('branch');
+
+  loadBranchEmployees();
+  setToday();
+  startAutoRefresh();
+}
+
+/* try to resume a session on page load */
+function tryResumeSession(){
+  const saved = sessionStorage.getItem('ticketingUser');
+  const savedToken = sessionStorage.getItem('ticketingToken');
+  if (saved && savedToken) {
+    try { currentUser = JSON.parse(saved); authToken = savedToken; enterApp(); return; } catch(e){}
+  }
+}
+
+/* ---------------------------------------------------------------------
+   API LAYER
+   --------------------------------------------------------------------- */
+
+function setSyncStatus(state, msg){
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.className = 'sync-' + state;
+  el.textContent = msg;
+}
+
+function authHeaders(){
+  return authToken ? { 'Authorization': 'Bearer ' + authToken } : {};
+}
+
+function handleSessionExpiry(res){
+  if (res.status === 401 && currentUser) {
+    // Token missing/expired/invalid — bounce back to the login screen
+    // rather than silently failing every subsequent call.
+    logout();
+    const errEl = document.getElementById('loginError');
+    if (errEl) errEl.textContent = 'Your session expired — please log in again.';
+  }
+}
+
+async function apiGet(params){
+  if (!API_URL || API_URL === 'PASTE_YOUR_WEB_APP_URL_HERE') {
+    throw new Error('API_URL is not set. Paste your Apps Script Web App URL near the top of the <script> section.');
+  }
+  const qs = params ? ('?' + new URLSearchParams(params).toString()) : '';
+  const res = await fetch(API_URL + qs, { method:'GET', headers: authHeaders() });
+  if (!res.ok) { handleSessionExpiry(res); throw new Error('GET failed: ' + res.status); }
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+async function apiPost(payload){
+  const res = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json', ...authHeaders()},
+    body:JSON.stringify(payload)
+  });
+  if (!res.ok) { handleSessionExpiry(res); throw new Error('POST failed: ' + res.status); }
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
+}
+
+async function refreshFromSheet(showSpinner){
+  if (isSyncing || !currentUser) return;
+  isSyncing = true;
+  if (showSpinner) setSyncStatus('syncing', '⏳ Syncing…');
+  try{
+    const json = await apiGet({ action:'records' });
+    data = json.records || [];
+  }catch(err){
+    console.error('Sync error:', err);
+    setSyncStatus('error', '🔴 Sync failed — check connection');
+    isSyncing = false;
+    return;
+  }
+  // Fetch succeeded — render separately so a display bug (bad data in one
+  // row, a DOM error, etc.) can never get mislabeled as a "sync failed /
+  // check connection" network error. It's a different problem and needs a
+  // different message so it's actually findable in the console.
+  try{
+    render();
+    setSyncStatus('live', '🟢 Live · synced ' + new Date().toLocaleTimeString());
+  }catch(err){
+    console.error('Render error:', err);
+    setSyncStatus('error', '🔴 Display error — see console (data synced OK)');
+  }finally{
+    isSyncing = false;
+  }
+}
+
+function patchLocalRecord(rowId, patch){
+  const rec = data.find(r => r.rowId === rowId);
+  if (rec && patch) Object.assign(rec, patch);
+  return rec;
+}
+
+function removeLocalRecord(rowId){
+  const idx = data.findIndex(r => r.rowId === rowId);
+  if (idx !== -1) data.splice(idx, 1);
+}
+
+function startAutoRefresh(){
+  refreshFromSheet(true);
+  setInterval(() => refreshFromSheet(false), AUTO_REFRESH_MS);
+}
+
+/* ---------------------------------------------------------------------
+   TABS
+   --------------------------------------------------------------------- */
+
+function switchTab(tabId){
+  if ((tabId === 'dashboardTab' || tabId === 'chartsTab') && currentUser.role !== 'Manager') return;
+  activeTab = tabId;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
+  render();
+}
+
+/* ---------------------------------------------------------------------
+   FORM HELPERS
+   --------------------------------------------------------------------- */
+
+function setToday(){
+  const d = new Date();
+  document.getElementById('date').value = d.toISOString().split('T')[0];
+  const monthPicker = document.getElementById('chartsMonthPicker');
+  if (monthPicker) monthPicker.max = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function clearForm(){
+  document.getElementById('client').value = '';
+  document.getElementById('tr').value = '';
+  document.getElementById('priority').value = 'Normal';
+  setToday();
+  populateAssignToDropdown();
+}
+
+/* ---------------------------------------------------------------------
+   CREATE — Client, TR, Priority, Assign To only. Created directly as
+   Pending (already assigned). Branch is auto-tagged from whoever it's
+   assigned to (hidden field, not shown on the form).
+   --------------------------------------------------------------------- */
+
+async function saveRecord(){
+  const client = document.getElementById('client');
+  if (!client.value.trim()){ alert('Please enter a Client name before submitting.'); client.focus(); return; }
+
+  const assignSel = document.getElementById('assignTo');
+  const assignedName = assignSel.value;
+  if (!assignedName){ alert('Please choose who this should be assigned to.'); assignSel.focus(); return; }
+
+  const employees = window._branchEmployees || [];
+  const assignedEmp = employees.find(e => e.name === assignedName);
+  const branch = (assignedEmp && assignedEmp.branch) || currentUser.branch || '';
+
+  const record = {
+    date: document.getElementById('date').value,
+    client: client.value.toUpperCase().trim(),
+    tr: document.getElementById('tr').value.toUpperCase().trim(),
+    priority: document.getElementById('priority').value,
+    status: 'Pending',
+    handled: assignedName,
+    branch: branch,
+    city: '', country: '', vendor: '', bookingref: '', remarks: '',
+    checkin: '', checkout: '', nights: ''
+  };
+
+  try{
+    const res = await apiPost({ action:'create', record:record });
+    if (res.record) data.push(res.record); // avoid a full-table refetch just to show one new row
+    clearForm();
+    render();
+    switchTab('ticketsTab');
+  }catch(err){
+    alert('Could not submit request.\n\n' + err.message);
+  }
+}
+
+/* Fills the Assign To dropdown: managers pick anyone in their branch;
+   employees see themselves pre-selected (auto-assign-to-self), since
+   they're submitting on behalf of their own work. */
+function populateAssignToDropdown(){
+  const sel = document.getElementById('assignTo');
+  if (!sel) return;
+  sel.innerHTML = '';
+
+  const employees = (window._branchEmployees || []).slice().sort((a, b) => {
+    // Your own name always floats to the top — you're the most likely
+    // person to assign a new request to yourself, so it shouldn't require
+    // scrolling past everyone else alphabetically first.
+    if (a.name === currentUser.name) return -1;
+    if (b.name === currentUser.name) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  const spansBranches = employees.some(e => e.branch && e.branch !== currentUser.branch);
+
+  if (currentUser.role === 'Manager') {
+    const placeholder = document.createElement('option');
+    placeholder.value = ''; placeholder.textContent = 'Choose who should handle this…';
+    sel.appendChild(placeholder);
+    employees.forEach(emp => {
+      const o = document.createElement('option');
+      o.value = emp.name;
+      let label = emp.name === currentUser.name ? emp.name + ' (you)' : emp.name;
+      if (spansBranches && emp.branch) label += ' — ' + emp.branch;
+      o.textContent = label;
+      sel.appendChild(o);
+    });
+  } else {
+    // Employee: locked to self
+    const o = document.createElement('option');
+    o.value = currentUser.name; o.textContent = currentUser.name + ' (you)';
+    sel.appendChild(o);
+    sel.value = currentUser.name;
+    sel.disabled = true;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   SEARCH
+   --------------------------------------------------------------------- */
+
+const SEARCH_FIELDS = ['client','tr','city','country','vendor','checkin','checkout','bookingref','handled','remarks','branch'];
+let searchDebounceTimer = null;
+
+function onSearchInput(){
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(render, 150);
+}
+
+function rowSearchText(r){
+  return SEARCH_FIELDS.map(f => r[f]||'').join(' ').toLowerCase();
+}
+
+function statusClass(status){
+  return String(status||'').replace(/\s+/g,'');
+}
+
+function setTicketScope(scope){
+  ticketViewScope = scope;
+  document.querySelectorAll('.scope-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.scope === scope)
+  );
+  const note = document.getElementById('scopeNote');
+  if (note) {
+    note.textContent = scope === 'mine'
+      ? 'Showing only tickets assigned to you'
+      : scope === 'all'
+        ? 'Showing all tickets across every branch'
+        : 'Showing all tickets in your branch';
+  }
+  render();
+}
+
+/* ---------------------------------------------------------------------
+   VISIBILITY RULES
+   - Manager with AllBranchAccess: sees every request, all branches —
+     reserved for the few people who need the full picture (set per-user
+     in the Users sheet, not implied by Role alone).
+   - Manager (branch-locked, the default): sees all requests in their own
+     branch (assigned or not), plus unassigned Open requests (no branch
+     yet) so they can route them.
+   - Employee: sees Open requests in their branch (to self-assign) +
+     anything already Handled By them.
+   All of the above can be further narrowed by ticketViewScope:
+   - 'mine'   → only records assigned to currentUser (by name)
+   - 'branch' → default per-role behavior above
+   - 'all'    → everything (only available to AllBranchAccess users)
+   --------------------------------------------------------------------- */
+
+function visibleRecords(){
+  if (!currentUser) return [];
+
+  // 'mine' scope — same for all roles: only what's assigned to me.
+  // Still shows my own Open tickets I haven't yet been assigned to,
+  // so I don't lose visibility of things I need to pick up.
+  if (ticketViewScope === 'mine') {
+    return data.filter(r =>
+      r.handled === currentUser.name ||
+      (r.status === 'Open' && (!r.branch || r.branch === currentUser.branch))
+    );
+  }
+
+  // 'all' scope — only AllBranchAccess users can reach this.
+  if (ticketViewScope === 'all' && currentUser.allBranchAccess) {
+    return data;
+  }
+
+  // 'branch' scope (default) — original role-based rules.
+  // AllBranchAccess users in 'branch' scope see their own branch only,
+  // same as a normal Manager — 'all' is the explicit opt-in for full view.
+  if (currentUser.role === 'Manager') {
+    return data.filter(r => !r.branch || r.branch === currentUser.branch);
+  }
+  // Employee
+  return data.filter(r =>
+    (r.status === 'Open' && (!r.branch || r.branch === currentUser.branch)) ||
+    r.handled === currentUser.name
+  );
+}
+
+/* ---------------------------------------------------------------------
+   RENDER
+   --------------------------------------------------------------------- */
+
+function render(){
+  if (!currentUser) return;
+  const visible = visibleRecords();
+  const s = document.getElementById('search').value.toLowerCase();
+
+  let totalNights=0,o=0,p=0,w=0,c=0,lostCount=0;
+  visible.forEach(r=>{
+    totalNights += Number(r.nights||0);
+    const st = r.status;
+    if (st==='Open') o++;
+    if (st==='Pending') p++;
+    if (st==='Waiting for Client Response') w++;
+    if (st==='Confirmed') c++;
+    if (st==='Lost') lostCount++;
+  });
+
+  document.getElementById('tot').textContent = visible.length;
+  document.getElementById('opn').textContent = o;
+  document.getElementById('pen').textContent = p;
+  document.getElementById('wai').textContent = w;
+  document.getElementById('con').textContent = c;
+  document.getElementById('lst').textContent = lostCount;
+
+  renderPendingPanel(visible, s);
+
+  if (activeTab === 'ticketsTab') renderTicketsTable(visible, s);
+  if (activeTab === 'lostTab') renderLostTable(visible, s);
+  if (activeTab === 'confirmedTab') renderConfirmedTable(visible, s);
+  if (activeTab === 'blockedTab') renderBlockedTable(visible, s);
+  if (activeTab === 'reconfirmTab') renderReconfirmTable(visible, s);
+  if (activeTab === 'dashboardTab' && currentUser.role === 'Manager') renderDashboard();
+  if (activeTab === 'chartsTab' && currentUser.role === 'Manager') renderCharts();
+
+  updateOverdueBadge();
+  updateBlockedDeadlineBanner();
+}
+
+/* ---------------------------------------------------------------------
+   PENDING ENQUIRIES SIDEBAR (always visible on the New Request tab,
+   shows live Open + Pending items so both roles can see what needs
+   attention without leaving the form)
+   --------------------------------------------------------------------- */
+
+function renderPendingPanel(visible, searchTerm){
+  const list = document.getElementById('pendingList');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const pending = visible
+    .filter(r => ['Open','Pending'].includes(r.status))
+    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm));
+
+  if (pending.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'pending-empty';
+    empty.textContent = 'No pending enquiries';
+    list.appendChild(empty);
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  pending.forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'pending-item';
+
+    const top = document.createElement('div');
+    top.className = 'pi-top';
+    const name = document.createElement('span');
+    name.textContent = r.client || '(no client)';
+    top.appendChild(name);
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + statusClass(r.status);
+    badge.textContent = r.status;
+    top.appendChild(badge);
+    item.appendChild(top);
+
+    const meta = document.createElement('div');
+    meta.className = 'pi-meta';
+    const parts = [];
+    if (r.tr) parts.push('TR ' + r.tr);
+    if (r.city) parts.push(r.city);
+    if (r.checkin) parts.push('In ' + toDisplayDate(r.checkin));
+    if (r.handled) parts.push('Handled: ' + r.handled);
+    meta.textContent = parts.join(' · ') || '—';
+    item.appendChild(meta);
+
+    frag.appendChild(item);
+  });
+  list.appendChild(frag);
+}
+
+/* ---------------------------------------------------------------------
+   TICKETS TABLE — identical for Manager and Employee.
+   Status and Handled By are both editable inline, directly in the row.
+   --------------------------------------------------------------------- */
+
+function renderTicketsTable(visible, searchTerm){
+  const tbody = document.getElementById('ticketsBody');
+  const emptyMsg = document.getElementById('ticketsEmpty');
+
+  const rows = visible
+    .filter(r => r.status !== 'Lost' && r.status !== 'Confirmed')
+    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm));
+
+  emptyMsg.style.display = rows.length === 0 ? 'block' : 'none';
+
+  // Don't touch the row the user is actively typing/selecting in. Important:
+  // even just moving that row's DOM node through appendChild() — even if
+  // it ends up back in the same place — silently drops browser focus from
+  // whatever input was focused inside it. So the active row must stay
+  // completely untouched: never detached, never re-appended. Everything
+  // else gets rebuilt fresh as normal.
+  const activeEl = document.activeElement;
+  const activeRow = activeEl && tbody.contains(activeEl) ? activeEl.closest('tr') : null;
+  const activeRowId = activeRow ? activeRow.dataset.rowid : null;
+
+  if (rows.length === 0) {
+    if (activeRowId) return; // mid-edit on a row that's been filtered out (e.g. search) — leave it alone
+    tbody.innerHTML = '';
+    return;
+  }
+
+  // Remove every row except the active one (if any)
+  Array.from(tbody.children).forEach(tr => {
+    if (tr !== activeRow) tr.remove();
+  });
+
+  // Re-insert everything else in the correct order. Walk forward through
+  // the target row list, inserting each new row immediately before
+  // wherever the cursor currently sits; when we reach the active row's
+  // slot, skip insertion (it's already physically there) and just move
+  // the cursor past it. insertBefore(node, null) appends at the end,
+  // which naturally handles "active row is last" and "no active row".
+  let cursor = tbody.firstChild;
+  rows.forEach(r => {
+    if (activeRowId && r.rowId === activeRowId) {
+      cursor = activeRow.nextSibling;
+      return;
+    }
+    const tr = buildTicketRow(r);
+    tbody.insertBefore(tr, cursor);
+  });
+}
+
+function renderLostTable(visible, searchTerm){
+  const tbody = document.getElementById('lostBody');
+  const emptyMsg = document.getElementById('lostEmpty');
+  tbody.innerHTML = '';
+
+  const rows = visible
+    .filter(r => r.status === 'Lost')
+    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm));
+
+  emptyMsg.style.display = rows.length === 0 ? 'block' : 'none';
+  if (rows.length === 0) return;
+
+  const frag = document.createDocumentFragment();
+  rows.forEach(r => frag.appendChild(buildLostRow(r)));
+  tbody.appendChild(frag);
+}
+
+function buildLostRow(r){
+  const tr = document.createElement('tr');
+  const cells = [r.date, r.client, r.tr, r.city, r.country, toDisplayDate(r.checkin), toDisplayDate(r.checkout), r.nights];
+  cells.forEach(val => {
+    const td = document.createElement('td');
+    td.className = 'lost-row';
+    td.textContent = val || '';
+    tr.appendChild(td);
+  });
+
+  const statusTd = document.createElement('td');
+  statusTd.className = 'lost-row';
+  const badge = document.createElement('span');
+  badge.className = 'badge Lost';
+  badge.textContent = 'Lost';
+  statusTd.appendChild(badge);
+  tr.appendChild(statusTd);
+
+  const handledTd = document.createElement('td');
+  handledTd.className = 'lost-row';
+  handledTd.textContent = r.handled || '';
+  tr.appendChild(handledTd);
+
+  const branchTd = document.createElement('td');
+  branchTd.className = 'lost-row';
+  branchTd.textContent = r.branch || '';
+  tr.appendChild(branchTd);
+
+  return tr;
+}
+
+/* ---------------------------------------------------------------------
+   CONFIRMED TABLE — read-only booking details (same as Lost tab), plus
+   a per-row Delete button so a Confirmed ticket can be cleaned up
+   individually once it's no longer needed.
+   --------------------------------------------------------------------- */
+
+function renderConfirmedTable(visible, searchTerm){
+  const tbody = document.getElementById('confirmedBody');
+  const emptyMsg = document.getElementById('confirmedEmpty');
+  tbody.innerHTML = '';
+
+  const eligible = visible.filter(r => r.status === 'Confirmed');
+  updateFilterNames_('confirmed_client', eligible.map(r => r.client));
+  updateFilterNames_('confirmed_employee', eligible.map(r => r.handled));
+  const clientSet = getFilterSet_('confirmed_client');
+  const empSet = getFilterSet_('confirmed_employee');
+
+  const rows = eligible
+    .filter(r => clientSet.size === 0 || clientSet.has(r.client))
+    .filter(r => empSet.size === 0 || empSet.has(r.handled))
+    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm));
+
+  emptyMsg.style.display = rows.length === 0 ? 'block' : 'none';
+  if (rows.length === 0) return;
+
+  const frag = document.createDocumentFragment();
+  rows.forEach(r => frag.appendChild(buildConfirmedRow(r)));
+  tbody.appendChild(frag);
+}
+
+function buildConfirmedRow(r){
+  const tr = document.createElement('tr');
+  // City and Country capped narrower than the rest — same fix as the
+  // Blocked tab, so a long city/country name doesn't squeeze Check
+  // In/Check Out and everything after it into an unreadable width.
+  const cellDefs = [
+    { val: r.date },
+    { val: r.client },
+    { val: r.tr },
+    { val: r.city, narrow: true },
+    { val: r.country, narrow: true },
+    { val: toDisplayDate(r.checkin) },
+    { val: toDisplayDate(r.checkout) },
+    { val: r.nights }
+  ];
+  cellDefs.forEach(c => {
+    const td = document.createElement('td');
+    td.textContent = c.val || '';
+    if (c.narrow) {
+      td.style.maxWidth = '80px';
+      td.style.whiteSpace = 'normal';
+      td.style.overflowWrap = 'break-word';
+    }
+    tr.appendChild(td);
+  });
+
+  const statusTd = document.createElement('td');
+  const badge = document.createElement('span');
+  badge.className = 'badge Confirmed';
+  badge.textContent = 'Confirmed';
+  statusTd.appendChild(badge);
+  tr.appendChild(statusTd);
+
+  const handledTd = document.createElement('td');
+  handledTd.textContent = r.handled || '';
+  tr.appendChild(handledTd);
+
+  const branchTd = document.createElement('td');
+  branchTd.textContent = r.branch || '';
+  tr.appendChild(branchTd);
+
+  // Confirmation Number — editable, saved on blur
+  const confNumTd = document.createElement('td');
+  const confNumInput = document.createElement('input');
+  confNumInput.type = 'text';
+  confNumInput.value = r.confirmationNumber || '';
+  confNumInput.placeholder = 'Confirmation #';
+  confNumInput.style.width = '130px';
+  confNumInput.onblur = () => {
+    if (confNumInput.value.trim() !== String(r.confirmationNumber || '').trim()) {
+      setConfirmedField_(r, 'confirmationNumber', confNumInput.value.trim());
+    }
+  };
+  confNumTd.appendChild(confNumInput);
+  tr.appendChild(confNumTd);
+
+  // Invoice Number — editable, saved on blur
+  const invNumTd = document.createElement('td');
+  const invNumInput = document.createElement('input');
+  invNumInput.type = 'text';
+  invNumInput.value = r.invoiceNumber || '';
+  invNumInput.placeholder = 'Invoice #';
+  invNumInput.style.width = '130px';
+  invNumInput.onblur = () => {
+    if (invNumInput.value.trim() !== String(r.invoiceNumber || '').trim()) {
+      setConfirmedField_(r, 'invoiceNumber', invNumInput.value.trim());
+    }
+  };
+  invNumTd.appendChild(invNumInput);
+  tr.appendChild(invNumTd);
+
+  const actionTd = document.createElement('td');
+  const delBtn = document.createElement('button');
+  delBtn.textContent = 'Delete';
+  delBtn.onclick = () => deleteTicket(r.rowId);
+  actionTd.appendChild(delBtn);
+  tr.appendChild(actionTd);
+
+  return tr;
+}
+
+async function setConfirmedField_(r, key, value){
+  try{
+    await apiPost({ action:'updateFields', rowId:r.rowId, fields:{ [key]: value }, actor:currentUser });
+    r[key] = value;
+  }catch(err){
+    alert('Could not save.\n\n' + (err.message || err));
+    render();
+  }
+}
+
+/* ---------------------------------------------------------------------
+   BLOCKED TAB — every Confirmed booking, defaulted to Paid. Switching a
+   row to Blocked reveals a deadline date picker; the global banner (see
+   updateBlockedDeadlineBanner, hooked into render()) starts showing 2
+   days before that deadline and only stops once the row is switched
+   back to Paid — there's no dismiss button for it, by design.
+   --------------------------------------------------------------------- */
+
+function renderBlockedTable(visible, searchTerm){
+  const tbody = document.getElementById('blockedBody');
+  const emptyMsg = document.getElementById('blockedEmpty');
+
+  // Once a booking's payment status is marked Confirmed it's done — it's
+  // excluded here so it drops off this list for good (until/unless changed
+  // back some other way). Only undecided (blank) or On Hold bookings stay
+  // in view. Shown for both Confirmed and Waiting for Client Response
+  // tickets, not just Confirmed ones. Also excluded: anything whose Check
+  // In date has already passed — Confirmed/Waiting are never auto-swept to
+  // Lost, so a booking left undecided here could otherwise sit in this
+  // list indefinitely after the guest has already checked in.
+  const eligible = visible.filter(r =>
+    (r.status === 'Confirmed' || r.status === 'Waiting for Client Response')
+    && String(r.paymentStatus || '').trim() !== 'Paid'
+    && !hasCheckInPassed_(r.checkin)
+  );
+  updateFilterNames_('blocked_client', eligible.map(r => r.client));
+  updateFilterNames_('blocked_employee', eligible.map(r => r.handled));
+  const clientSet = getFilterSet_('blocked_client');
+  const empSet = getFilterSet_('blocked_employee');
+
+  const rows = eligible
+    .filter(r => clientSet.size === 0 || clientSet.has(r.client))
+    .filter(r => empSet.size === 0 || empSet.has(r.handled))
+    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm));
+
+  emptyMsg.style.display = rows.length === 0 ? 'block' : 'none';
+
+  // Same fix as the focus-stealing bug elsewhere in this app: a background
+  // refresh (every 15s) used to rebuild every row from scratch, including
+  // whichever one someone was mid-interaction with — e.g. right after
+  // clicking Blocked but before that save round-trip finished, a refresh
+  // would rebuild the row from the server's still-"Paid" data and it would
+  // visibly snap back, cancelling an in-progress date-picker selection too.
+  // Now: whichever row currently has focus is left as the exact same DOM
+  // node, untouched, instead of being torn down and recreated.
+  const activeEl = document.activeElement;
+  const focusedTr = activeEl && tbody.contains(activeEl) ? activeEl.closest('tr') : null;
+  const focusedRowId = focusedTr ? focusedTr.dataset.rowId : null;
+
+  const frag = document.createDocumentFragment();
+  rows.forEach(r => {
+    frag.appendChild(r.rowId === focusedRowId && focusedTr ? focusedTr : buildBlockedRow(r));
+  });
+
+  tbody.innerHTML = '';
+  tbody.appendChild(frag);
+}
+
+function buildBlockedRow(r){
+  const tr = document.createElement('tr');
+  tr.dataset.rowId = r.rowId;
+
+  // City capped narrower than the rest — rarely needs much room, and
+  // shrinking it frees up horizontal space so the whole table is more
+  // likely to fit without side-scrolling.
+  const cellDefs = [
+    { val: r.date },
+    { val: r.client },
+    { val: r.tr },
+    { val: r.city, narrow: true },
+    { val: toDisplayDate(r.checkin) },
+    { val: r.handled },
+    { val: r.branch }
+  ];
+  cellDefs.forEach(c => {
+    const td = document.createElement('td');
+    td.textContent = c.val || '';
+    if (c.narrow) {
+      td.style.maxWidth = '80px';
+      td.style.whiteSpace = 'normal';
+      td.style.overflowWrap = 'break-word';
+    }
+    tr.appendChild(td);
+  });
+
+  // Nothing is checked by default — status is blank until the employee
+  // explicitly picks On Hold or Paid. isPaymentPaid rows never actually
+  // reach this point in practice (renderBlockedTable filters them out),
+  // but kept explicit here for clarity/robustness.
+  const paymentStatusVal = String(r.paymentStatus || '').trim();
+  const isOnHold = paymentStatusVal === 'On Hold';
+  const isPaymentPaid = paymentStatusVal === 'Paid';
+  const groupName = 'paystatus_' + r.rowId;
+
+  // Only the person who's Handled By this booking, or someone explicitly
+  // flagged CanChangePaymentStatus='Yes' in the Users sheet, can flip
+  // On Hold/Paid or change the deadline. Deliberately NOT based on
+  // role === 'Manager' — since most/all accounts here are set to
+  // "Manager", that would grant this to everyone and defeat the point.
+  // The backend enforces this same rule independently (handleUpdateFields_
+  // in Code.gs); this is just reflected here so the controls are visibly
+  // disabled instead of silently failing on save.
+  const canChangePayment = !!currentUser.canChangePaymentStatus
+    || String(r.handled || '').trim().toLowerCase() === String(currentUser.name || '').trim().toLowerCase();
+
+  // Declared before the radios so their onclick handlers can toggle it
+  const deadlineInput = document.createElement('input');
+
+  const statusTd = document.createElement('td');
+
+  // On Hold stacked above Paid — each on its own line, not side by side.
+  const blockedLabel = document.createElement('label');
+  blockedLabel.style.cssText = 'display:block;cursor:' + (canChangePayment ? 'pointer' : 'not-allowed');
+  const blockedRadio = document.createElement('input');
+  blockedRadio.type = 'radio';
+  blockedRadio.name = groupName;
+  blockedRadio.checked = isOnHold;
+  blockedRadio.disabled = !canChangePayment;
+  blockedRadio.onclick = () => {
+    deadlineInput.style.display = '';
+    confNumInput.style.display = '';
+    setBlockedField_(r, 'paymentStatus', 'On Hold');
+    // If there's no deadline saved yet, commit the Check In date shown in
+    // the field as the actual starting deadline — otherwise the displayed
+    // date would look selected without really being saved, which is
+    // confusing if the employee just clicks away without touching it.
+    if (!r.paymentDeadline && deadlineInput.value) {
+      setBlockedField_(r, 'paymentDeadline', deadlineInput.value);
+    }
+  };
+  blockedLabel.appendChild(blockedRadio);
+  blockedLabel.append(' On Hold');
+
+  const paidLabel = document.createElement('label');
+  paidLabel.style.cssText = 'display:block;cursor:' + (canChangePayment ? 'pointer' : 'not-allowed');
+  const paidRadio = document.createElement('input');
+  paidRadio.type = 'radio';
+  paidRadio.name = groupName;
+  paidRadio.checked = isPaymentPaid;
+  paidRadio.disabled = !canChangePayment;
+  paidRadio.onclick = () => {
+    deadlineInput.style.display = 'none';
+    confNumInput.style.display = 'none';
+    setBlockedField_(r, 'paymentStatus', 'Paid'); // row drops off this list once this save completes
+  };
+  paidLabel.appendChild(paidRadio);
+  paidLabel.append(' Paid');
+
+  statusTd.appendChild(blockedLabel);
+  statusTd.appendChild(paidLabel);
+  if (!canChangePayment) {
+    const lockNote = document.createElement('div');
+    lockNote.textContent = 'Only ' + (r.handled || 'the handler') + ' or someone with payment access can change this';
+    lockNote.style.cssText = 'font-size:11px;color:#4a5560;margin-top:2px';
+    statusTd.appendChild(lockNote);
+  }
+  tr.appendChild(statusTd);
+
+  // Deadline to Pay — a plain date input, only meaningful (and only
+  // shown) while the row is set to Blocked. Can't be set later than the
+  // booking's own Check In date — paying after check-in defeats the
+  // point of a payment deadline for a blocked/guaranteed booking.
+  // Defaults to the Check In date itself (not blank) so the native
+  // calendar picker opens right around the relevant month/day instead of
+  // today's — a Blocked booking is often months away, so an empty value
+  // would otherwise force scrolling through many months to get there.
+  const deadlineTd = document.createElement('td');
+  deadlineInput.type = 'date';
+  deadlineInput.value = r.paymentDeadline || r.checkin || '';
+  deadlineInput.style.display = isOnHold ? '' : 'none';
+  deadlineInput.disabled = !canChangePayment;
+  if (r.checkin) deadlineInput.max = r.checkin; // greys out later dates directly in the calendar picker
+  deadlineInput.onchange = () => {
+    if (r.checkin && deadlineInput.value && deadlineInput.value > r.checkin) {
+      alert('Payment deadline cannot be after the Check In date (' + toDisplayDate(r.checkin) + ').');
+      deadlineInput.value = r.paymentDeadline || r.checkin || ''; // revert to last saved value
+      return;
+    }
+    setBlockedField_(r, 'paymentDeadline', deadlineInput.value);
+  };
+  deadlineTd.appendChild(deadlineInput);
+  tr.appendChild(deadlineTd);
+
+  // Confirmation Number — appears right next to the deadline once Blocked
+  // is picked. Shares the same underlying field as the Confirmed tab's
+  // Confirmation Number, so it's one consistent value however it's edited.
+  const confNumTd = document.createElement('td');
+  const confNumInput = document.createElement('input');
+  confNumInput.type = 'text';
+  confNumInput.value = r.confirmationNumber || '';
+  confNumInput.placeholder = 'Confirmation #';
+  confNumInput.style.width = '130px';
+  confNumInput.style.display = isOnHold ? '' : 'none';
+  confNumInput.disabled = !canChangePayment;
+  confNumInput.onblur = () => {
+    if (confNumInput.value.trim() !== String(r.confirmationNumber || '').trim()) {
+      setBlockedField_(r, 'confirmationNumber', confNumInput.value.trim());
+    }
+  };
+  confNumTd.appendChild(confNumInput);
+  tr.appendChild(confNumTd);
+
+  return tr;
+}
+
+async function setBlockedField_(r, key, value){
+  try{
+    await apiPost({ action:'updateFields', rowId:r.rowId, fields:{ [key]: value }, actor:currentUser });
+    r[key] = value;
+    updateBlockedDeadlineBanner(); // reflect the change immediately rather than waiting for the next poll
+    render(); // Paid rows drop off this tab's list the moment this resolves; Blocked rows just re-render in place
+  }catch(err){
+    alert('Could not save.\n\n' + (err.message || err));
+    render();
+  }
+}
+
+/* Bookings that are Blocked, have a deadline set, and that deadline is
+   within 2 days (inclusive) — stays true even after the deadline has
+   fully passed, since the only way off this list is switching to Paid. */
+function getBlockedPaymentAlerts_(){
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return data.filter(r => {
+    if (r.status !== 'Confirmed' && r.status !== 'Waiting for Client Response') return false;
+    if (String(r.paymentStatus || '').trim() !== 'On Hold') return false;
+    if (!r.paymentDeadline) return false;
+
+    const deadline = new Date(r.paymentDeadline);
+    if (isNaN(deadline.getTime())) return false;
+    deadline.setHours(0, 0, 0, 0);
+
+    const twoDaysBefore = new Date(deadline);
+    twoDaysBefore.setDate(twoDaysBefore.getDate() - 2);
+
+    return today.getTime() >= twoDaysBefore.getTime();
+  });
+}
+
+/* No dismiss button on this banner (unlike the overdue one) — it simply
+   shows whenever there's at least one qualifying alert, and hides the
+   moment there are none. Called every render(), so it reflects state
+   immediately, no separate "last count" tracking needed. */
+function updateBlockedDeadlineBanner(){
+  if (!currentUser) return;
+
+  const alerts = getBlockedPaymentAlerts_().filter(r =>
+    currentUser.allBranchAccess || !r.branch || r.branch === currentUser.branch
+  );
+
+  const banner = document.getElementById('blockedDeadlineNotification');
+  const text = document.getElementById('blockedDeadlineNotifText');
+  if (!banner || !text) return;
+
+  if (alerts.length === 0) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  const preview = alerts.slice(0, 3).map(r =>
+    `${r.client || '?'} (${r.tr || 'no TR'} · pay by ${toDisplayDate(r.paymentDeadline)})`
+  ).join(', ');
+  const more = alerts.length > 3 ? ` and ${alerts.length - 3} more` : '';
+  text.textContent = `${alerts.length} blocked booking${alerts.length > 1 ? 's need' : ' needs'} payment soon: ${preview}${more}`;
+  banner.style.display = 'flex';
+}
+
+/* ---------------------------------------------------------------------
+   RECONFIRMATIONS TAB — Confirmed bookings whose Check In is tomorrow.
+   Employees call the hotel to reconfirm and fill in three fields:
+   Reconfirmed (checkbox), Designation By (who reconfirmed), and Hotel
+   Confirmation Number. Once all three are filled, the row turns green.
+   The row drops off this tab automatically the day after Check In,
+   whether or not those fields were ever filled in — since the filter
+   below is purely date-based (checkin === tomorrow), a booking simply
+   stops matching once "tomorrow" moves past its Check In date.
+   --------------------------------------------------------------------- */
+
+function renderReconfirmTable(visible, searchTerm){
+  const tbody = document.getElementById('reconfirmBody');
+  const emptyMsg = document.getElementById('reconfirmEmpty');
+  tbody.innerHTML = '';
+
+  const eligible = visible.filter(r => r.status === 'Confirmed' && isCheckInTomorrow_(r.checkin));
+  updateFilterNames_('reconfirm_client', eligible.map(r => r.client));
+  updateFilterNames_('reconfirm_employee', eligible.map(r => r.handled));
+  const clientSet = getFilterSet_('reconfirm_client');
+  const empSet = getFilterSet_('reconfirm_employee');
+
+  const rows = eligible
+    .filter(r => clientSet.size === 0 || clientSet.has(r.client))
+    .filter(r => empSet.size === 0 || empSet.has(r.handled))
+    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm));
+
+  emptyMsg.style.display = rows.length === 0 ? 'block' : 'none';
+  if (rows.length === 0) return;
+
+  const frag = document.createDocumentFragment();
+  rows.forEach(r => frag.appendChild(buildReconfirmRow(r)));
+  tbody.appendChild(frag);
+}
+
+/* True if the given Check In date is strictly before today — used to keep
+   the Blocked tab from showing bookings whose guest has already checked
+   in, since Confirmed is a terminal status that's never auto-swept away. */
+function hasCheckInPassed_(checkinStr){
+  if (!checkinStr) return false;
+  const d = new Date(checkinStr);
+  if (isNaN(d.getTime())) return false;
+  d.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return d.getTime() < today.getTime();
+}
+
+function isCheckInTomorrow_(checkinStr){
+  if (!checkinStr) return false;
+  const d = new Date(checkinStr);
+  if (isNaN(d.getTime())) return false;
+  d.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  return d.getTime() === tomorrow.getTime();
+}
+
+function isReconfirmRowComplete_(r){
+  return String(r.reconfirmed || '').trim() === 'Yes'
+    && String(r.reconfirmedBy || '').trim() !== ''
+    && String(r.hotelConfirmationNumber || '').trim() !== '';
+}
+
+function applyReconfirmRowColor_(r, trEl){
+  trEl.style.background = isReconfirmRowComplete_(r) ? '#e8f5e9' : '';
+}
+
+function buildReconfirmRow(r){
+  const tr = document.createElement('tr');
+
+  const cells = [r.date, r.client, r.tr, r.city, toDisplayDate(r.checkin), toDisplayDate(r.checkout), r.handled, r.branch];
+  cells.forEach(val => {
+    const td = document.createElement('td');
+    td.textContent = val || '';
+    tr.appendChild(td);
+  });
+
+  // Reconfirmed checkbox
+  const reconfirmedTd = document.createElement('td');
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = String(r.reconfirmed || '').trim() === 'Yes';
+  checkbox.onchange = () => setReconfirmField_(r, 'reconfirmed', checkbox.checked ? 'Yes' : 'No', tr);
+  reconfirmedTd.appendChild(checkbox);
+  tr.appendChild(reconfirmedTd);
+
+  // Designation By — who at the property/agency reconfirmed the booking
+  const designationTd = document.createElement('td');
+  const designationInput = document.createElement('input');
+  designationInput.type = 'text';
+  designationInput.value = r.reconfirmedBy || '';
+  designationInput.placeholder = 'Name / designation';
+  designationInput.style.width = '140px';
+  designationInput.onblur = () => {
+    if (designationInput.value.trim() !== String(r.reconfirmedBy || '').trim()) {
+      setReconfirmField_(r, 'reconfirmedBy', designationInput.value.trim(), tr);
+    }
+  };
+  designationTd.appendChild(designationInput);
+  tr.appendChild(designationTd);
+
+  // Hotel Confirmation Number
+  const hotelConfTd = document.createElement('td');
+  const hotelConfInput = document.createElement('input');
+  hotelConfInput.type = 'text';
+  hotelConfInput.value = r.hotelConfirmationNumber || '';
+  hotelConfInput.placeholder = 'Confirmation #';
+  hotelConfInput.style.width = '140px';
+  hotelConfInput.onblur = () => {
+    if (hotelConfInput.value.trim() !== String(r.hotelConfirmationNumber || '').trim()) {
+      setReconfirmField_(r, 'hotelConfirmationNumber', hotelConfInput.value.trim(), tr);
+    }
+  };
+  hotelConfTd.appendChild(hotelConfInput);
+  tr.appendChild(hotelConfTd);
+
+  applyReconfirmRowColor_(r, tr);
+  return tr;
+}
+
+async function setReconfirmField_(r, key, value, trEl){
+  try{
+    await apiPost({ action:'updateFields', rowId:r.rowId, fields:{ [key]: value }, actor:currentUser });
+    r[key] = value; // update local copy so the color check reflects it immediately
+    applyReconfirmRowColor_(r, trEl); // just recolor this one row, no full re-render needed
+  }catch(err){
+    alert('Could not save.\n\n' + (err.message || err));
+    render(); // re-sync back to last known-good state on failure
+  }
+}
+
+function buildTicketRow(r){
+  const tr = document.createElement('tr');
+  tr.dataset.rowid = r.rowId || '';
+
+  // Detect overdue: check-in date has passed and ticket is not yet
+  // Confirmed or Lost. Used for row highlight + inline warning badge.
+  const today = new Date(); today.setHours(0,0,0,0);
+  const checkinDate = r.checkin ? new Date(r.checkin) : null;
+  const isOverdue = checkinDate && !isNaN(checkinDate) &&
+    checkinDate < today &&
+    !TERMINAL_STATUSES_CLIENT.includes(r.status);
+
+  if (isOverdue) tr.classList.add('overdue-row');
+
+  // editable details directly in the table for whoever holds the ticket
+  const canEditDetails = (r.handled === currentUser.name) || currentUser.role === 'Manager';
+  // once a TR Number is assigned, only that person (or a manager) may touch
+  // Status/Handled By/fields for it — enforced here for UI clarity, and
+  // again server-side in Code.gs since this endpoint is publicly reachable
+  const isLockedToSomeoneElse = r.handled && r.handled !== currentUser.name && currentUser.role !== 'Manager';
+
+  const dateTd = document.createElement('td'); dateTd.textContent = r.date || ''; tr.appendChild(dateTd);
+  const clientTd = document.createElement('td'); clientTd.textContent = String(r.client || '').toUpperCase(); tr.appendChild(clientTd);
+  const trTd = document.createElement('td');
+  trTd.textContent = String(r.tr || '').toUpperCase();
+  const dupBtn = document.createElement('button');
+  dupBtn.textContent = '+';
+  dupBtn.title = 'Duplicate this row (same TR, new ticket)';
+  dupBtn.style.marginLeft = '6px';
+  dupBtn.style.fontSize = '13px';
+  dupBtn.style.fontWeight = 'bold';
+  dupBtn.style.padding = '1px 8px';
+  dupBtn.style.cursor = 'pointer';
+  dupBtn.onclick = () => duplicateTicket(r);
+  trTd.appendChild(dupBtn);
+  tr.appendChild(trTd);
+
+  const cityTd = document.createElement('td');
+  if (canEditDetails) {
+    const inp = document.createElement('input');
+    inp.value = String(r.city || '').toUpperCase(); inp.placeholder = 'CITY'; inp.style.width = '80px'; inp.style.fontSize = '12px';
+    inp.onchange = () => updateDetailField(r.rowId, 'city', inp.value);
+    cityTd.appendChild(inp);
+  } else { cityTd.textContent = String(r.city || '').toUpperCase(); }
+  tr.appendChild(cityTd);
+
+  const countryTd = document.createElement('td');
+  if (canEditDetails) {
+    const inp = document.createElement('input');
+    inp.value = String(r.country || '').toUpperCase(); inp.placeholder = 'COUNTRY'; inp.style.width = '90px'; inp.style.fontSize = '12px';
+    inp.onchange = () => updateDetailField(r.rowId, 'country', inp.value);
+    countryTd.appendChild(inp);
+  } else { countryTd.textContent = String(r.country || '').toUpperCase(); }
+  tr.appendChild(countryTd);
+
+  const checkinTd = document.createElement('td');
+  if (canEditDetails) {
+    const inp = document.createElement('input');
+    inp.value = toDisplayDate(r.checkin) || ''; inp.placeholder = '22-June-26'; inp.style.width = '110px'; inp.style.fontSize = '12px';
+    inp.onchange = () => handleDateFieldChange(inp, r.rowId, 'checkin');
+    checkinTd.appendChild(inp);
+  } else { checkinTd.textContent = toDisplayDate(r.checkin) || ''; }
+  if (isOverdue) {
+    const badge = document.createElement('span');
+    badge.className = 'overdue-badge';
+    badge.title = 'Check-in date has passed — consider marking this Lost';
+    badge.textContent = '⚠ Overdue';
+    checkinTd.appendChild(badge);
+  }
+  tr.appendChild(checkinTd);
+
+  const checkoutTd = document.createElement('td');
+  if (canEditDetails) {
+    const inp = document.createElement('input');
+    inp.value = toDisplayDate(r.checkout) || ''; inp.placeholder = '26-June-26'; inp.style.width = '110px'; inp.style.fontSize = '12px';
+    inp.onchange = () => handleDateFieldChange(inp, r.rowId, 'checkout');
+    checkoutTd.appendChild(inp);
+  } else { checkoutTd.textContent = toDisplayDate(r.checkout) || ''; }
+  tr.appendChild(checkoutTd);
+
+  const nightsTd = document.createElement('td'); nightsTd.textContent = r.nights || ''; tr.appendChild(nightsTd);
+
+  // STATUS — free dropdown, jump to any status, available to everyone
+  const statusTd = document.createElement('td');
+
+  const statusSel = document.createElement('select');
+  STATUS_OPTIONS.forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt; o.textContent = opt;
+    if (r.status === opt) o.selected = true;
+    statusSel.appendChild(o);
+  });
+  if (isLockedToSomeoneElse) {
+    statusSel.disabled = true;
+    statusSel.title = 'Assigned to ' + r.handled + ' — only they or a manager can change this';
+  } else {
+    statusSel.onchange = () => updateStatus(r.rowId, statusSel.value);
+  }
+  statusTd.appendChild(statusSel);
+  tr.appendChild(statusTd);
+
+  // HANDLED BY — dropdown of branch employees (or free text if branch unknown yet)
+  const handledTd = document.createElement('td');
+  const employees = (window._branchEmployees || []).slice().sort((a, b) => {
+    if (a.name === currentUser.name) return -1;
+    if (b.name === currentUser.name) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  if (isLockedToSomeoneElse) {
+    const lockedSpan = document.createElement('span');
+    lockedSpan.textContent = r.handled;
+    lockedSpan.title = 'Locked — only ' + r.handled + ' or a manager can reassign this';
+    lockedSpan.style.color = '#888';
+    handledTd.appendChild(lockedSpan);
+  } else if (r.status === 'Open' || employees.length === 0) {
+    const inp = document.createElement('input');
+    inp.className = 'inline-handled';
+    inp.value = r.handled || '';
+    inp.placeholder = 'Type a name…';
+    inp.onchange = () => assignTicket(r.rowId, inp.value);
+    handledTd.appendChild(inp);
+  } else {
+    const sel = document.createElement('select');
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = '(unassigned)';
+    sel.appendChild(blank);
+    const spansBranches = employees.some(e => e.branch && e.branch !== currentUser.branch);
+    employees.forEach(emp => {
+      const o = document.createElement('option');
+      o.value = emp.name;
+      o.textContent = (spansBranches && emp.branch) ? emp.name + ' — ' + emp.branch : emp.name;
+      if (r.handled === emp.name) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.onchange = () => { if (sel.value) assignTicket(r.rowId, sel.value); };
+    handledTd.appendChild(sel);
+  }
+  tr.appendChild(handledTd);
+
+  const branchTd = document.createElement('td'); branchTd.textContent = r.branch || ''; tr.appendChild(branchTd);
+
+  const actionTd = document.createElement('td');
+  const delBtn = document.createElement('button');
+  delBtn.textContent = 'Delete';
+  delBtn.onclick = () => deleteTicket(r.rowId);
+  actionTd.appendChild(delBtn);
+
+  // Show a per-row "Mark Lost" button for overdue tickets so a Manager
+  // can act on individual tickets without going through the bulk prompt.
+  if (isOverdue && currentUser.role === 'Manager') {
+    const lostBtn = document.createElement('button');
+    lostBtn.className = 'btn-mark-lost';
+    lostBtn.textContent = 'Mark Lost';
+    lostBtn.title = 'Move this ticket to Lost immediately';
+    lostBtn.onclick = async () => {
+      const label = `${r.client || ''} — TR: ${r.tr || ''} — Check-in: ${toDisplayDate(r.checkin)}`;
+      if (!confirm(`Mark this ticket as Lost?\n\n${label}`)) return;
+      try {
+        const res = await apiPost({ action:'updateStatus', rowId:r.rowId, status:'Lost' });
+        patchLocalRecord(r.rowId, res.record || { status:'Lost' });
+        render();
+      } catch(err) { alert('Error: ' + (err.message || err)); }
+    };
+    actionTd.appendChild(lostBtn);
+  }
+
+  tr.appendChild(actionTd);
+  return tr;
+}
+
+const STATUS_OPTIONS = ['Pending','Waiting for Client Response','Confirmed','Lost'];
+
+/* ---------------------------------------------------------------------
+   DATE HANDLING — internal storage stays YYYY-MM-DD (so Sheet sorting,
+   Lost-detection comparisons, and Excel export remain unambiguous).
+   Display and input are DD-Month-YY, e.g. "22-June-26". Spelling out the
+   month removes day/month ambiguity entirely, and the parser accepts
+   full names, short names (Jun), any casing, and common separators.
+   --------------------------------------------------------------------- */
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function toDisplayDate(isoStr){
+  if (!isoStr) return '';
+  const m = String(isoStr).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return isoStr; // already not in storage format, show as-is
+  const day = Number(m[3]);
+  const monthName = MONTH_NAMES[Number(m[2]) - 1];
+  const yy = m[1].slice(2);
+  return day + '-' + monthName + '-' + yy;
+}
+
+/* Shared onchange handler for Check In / Check Out inputs. Deliberately
+   does NOT use alert() — a blocking popup mid-typing (e.g. triggered by
+   clicking Refresh Now, or tabbing away while only half-typed) is jarring
+   and was the exact issue reported. Instead: valid input gets normalized
+   and saved silently; invalid/incomplete input just gets a red outline so
+   the problem is visible without interrupting anything, and nothing is
+   sent to the Sheet until it actually parses. */
+function handleDateFieldChange(inp, rowId, field){
+  const typed = inp.value.trim();
+
+  if (!typed) {
+    inp.classList.remove('date-error');
+    updateDetailField(rowId, field, '');
+    return;
+  }
+
+  const parsed = parseFlexibleDate(typed);
+  if (!parsed) {
+    inp.classList.add('date-error');
+    inp.title = 'Could not understand this date — try a format like 22-June-26';
+    return; // leave the raw text as typed, don't save, don't pop anything up
+  }
+
+  inp.classList.remove('date-error');
+  inp.title = '';
+  inp.value = toDisplayDate(parsed);
+  updateDetailField(rowId, field, parsed);
+}
+
+function monthFromName(token){
+  const t = token.trim().toLowerCase();
+  if (t.length < 3) return null; // need at least 3 letters to disambiguate (e.g. "Jun" vs "Jul")
+
+  // exact 3-letter abbreviation match first (Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec)
+  for (let i = 0; i < MONTH_NAMES.length; i++) {
+    if (MONTH_NAMES[i].toLowerCase().slice(0,3) === t.slice(0,3)) {
+      // confirm the rest of the typed text is consistent with the full name (catches genuine typos)
+      if (MONTH_NAMES[i].toLowerCase().startsWith(t)) return i + 1;
+      if (t.length === 3) return i + 1; // plain abbreviation, e.g. "jun"
+    }
+  }
+  return null;
+}
+
+function parseFlexibleDate(input){
+  if (!input || !input.trim()) return '';
+  const raw = input.trim();
+
+  // Tokenize by switching between digit-runs and letter-runs, ignoring any
+  // separators (-, /, ., space, comma) entirely. This is what makes
+  // "21june26", "21-Jun-26", "21 JUNE 2026", "21.June.26" all parse the
+  // same way — we don't care what (if anything) separates the parts.
+  const tokens = raw.match(/[0-9]+|[A-Za-z]+/g);
+  if (!tokens || tokens.length < 2) return null;
+
+  // Find the one letter-token (the month name/abbreviation) and treat the
+  // remaining digit-tokens, in the order they appeared, as day then year.
+  const letterTokens = tokens.filter(t => /[A-Za-z]/.test(t));
+  const digitTokens = tokens.filter(t => /^[0-9]+$/.test(t));
+
+  if (letterTokens.length === 1 && digitTokens.length === 2) {
+    const mo = monthFromName(letterTokens[0]);
+    if (mo) {
+      // digit tokens appear in original order; day is whichever isn't 4-digit/year-like,
+      // but normally it's [day, year] in that order since month is spelled out
+      let [first, second] = digitTokens;
+      let dStr = first, yStr = second;
+      // if the day-looking token is actually 4 digits, it's the year and got swapped
+      if (first.length >= 4 || (first.length === 2 && Number(first) > 31)) { dStr = second; yStr = first; }
+      const y = normalizeYear(yStr);
+      const d = Number(dStr);
+      if (isValidDate(y, mo, d)) return pad4(y) + '-' + pad2(mo) + '-' + pad2(d);
+    }
+  }
+
+  // No month name found at all — try ISO (YYYY-MM-DD pasted by mistake)
+  if (letterTokens.length === 0 && digitTokens.length === 3) {
+    let [a, b, c] = digitTokens;
+    // YYYY-MM-DD: first token is 4 digits
+    if (a.length === 4) {
+      if (isValidDate(a, b, c)) return pad4(a) + '-' + pad2(b) + '-' + pad2(c);
+    }
+    // DD-MM-YYYY numeric fallback (no month name typed at all)
+    let y = normalizeYear(c);
+    if (isValidDate(y, b, a)) return pad4(y) + '-' + pad2(b) + '-' + pad2(a);
+    if (isValidDate(y, a, b)) return pad4(y) + '-' + pad2(a) + '-' + pad2(b); // tolerate MM-DD swap
+  }
+
+  return null; // genuinely unparseable — caller keeps the raw text so the user can fix it
+}
+
+function normalizeYear(yStr){
+  let y = String(yStr);
+  if (y.length === 2) y = (Number(y) < 50 ? '20' : '19') + y; // 00-49 -> 2000s, else 1900s
+  return Number(y);
+}
+
+function isValidDate(y, mo, d){
+  y = Number(y); mo = Number(mo); d = Number(d);
+  if (!y || !mo || !d) return false;
+  if (mo < 1 || mo > 12) return false;
+  const daysInMonth = new Date(y, mo, 0).getDate();
+  if (d < 1 || d > daysInMonth) return false;
+  return true;
+}
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function pad4(n){ return String(n).padStart(4,'0'); }
+
+/* ---------------------------------------------------------------------
+   INLINE DETAIL EDITS (Check In / Check Out typed directly in the table)
+   --------------------------------------------------------------------- */
+
+async function updateDetailField(rowId, field, value){
+  const rec = data.find(r => r.rowId === rowId);
+  if (!rec) return;
+
+  // Uppercase all free-text fields — dates (checkin/checkout) and
+  // system/numeric fields (nights, status, handled, branch) are excluded
+  // since their format or values must remain unchanged.
+  const TEXT_FIELDS = ['client','tr','city','country','vendor','bookingref','remarks'];
+  if (TEXT_FIELDS.includes(field) && typeof value === 'string') {
+    value = value.toUpperCase().trim();
+  }
+
+  const fields = {};
+  fields[field] = value;
+  rec[field] = value; // update local cache immediately so nights calc below is accurate
+
+  // auto-calc nights when both dates are present — read from the just-updated
+  // local record, not a stale copy, so this is correct even if checkin and
+  // checkout are edited back-to-back in quick succession.
+  if (rec.checkin && rec.checkout) {
+    const d1 = new Date(rec.checkin), d2 = new Date(rec.checkout);
+    const diff = Math.round((d2 - d1) / (1000*60*60*24));
+    if (diff > 0) {
+      fields.nights = diff;
+      rec.nights = diff;
+    }
+  }
+
+  // Update the Nights cell in place without re-rendering the whole table —
+  // avoids blanking/losing focus on whatever the user is still editing.
+  updateNightsCellInPlace(rowId, rec.nights);
+
+  try{
+    await apiPost({ action:'updateFields', rowId:rowId, fields:fields, actor:currentUser });
+    // No full refreshFromSheet() here on purpose — the local `data` cache is
+    // already correct, and re-rendering now would interrupt active typing.
+    // The next scheduled auto-refresh (or manual Refresh Now) will reconcile
+    // with the Sheet, by which point the user has likely moved on.
+  }catch(err){
+    alert(err.message); // lock messages are already clear on their own; refresh to revert the rejected edit
+    await refreshFromSheet(false);
+  }
+}
+
+function updateNightsCellInPlace(rowId, nights){
+  const tbody = document.getElementById('ticketsBody');
+  if (!tbody) return;
+  const row = tbody.querySelector('tr[data-rowid="' + cssEscape(rowId) + '"]');
+  if (!row) return;
+  const nightsTd = row.children[7]; // Date,Client,TR,City,Country,CheckIn,CheckOut,Nights -> index 7
+  if (nightsTd) nightsTd.textContent = nights || '';
+}
+
+function cssEscape(str){
+  return String(str).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+}
+
+/* ---------------------------------------------------------------------
+   ACTIONS
+   --------------------------------------------------------------------- */
+
+async function assignTicket(rowId, employeeName){
+  if (!employeeName || !employeeName.trim()){
+    render(); // revert any stray blank edit back to what's already in the local cache
+    return;
+  }
+  try{
+    const rec = data.find(r => r.rowId === rowId);
+    // Send the TICKET's own branch, not the current user's — important for
+    // AllBranchAccess users assigning a ticket that already belongs to a
+    // different branch than their own. Only fall back to the assignee's
+    // branch when the ticket truly has none yet (the "route an unassigned
+    // request" case); the backend will only ever use this to fill in a
+    // blank Branch, never to overwrite an existing one.
+    const assigneeBranch = (window._allBranchEmployees || window._branchEmployees || [])
+      .find(e => e.name === employeeName.trim());
+    const branch = (rec && rec.branch) || (assigneeBranch && assigneeBranch.branch) || currentUser.branch;
+    const res = await apiPost({ action:'assign', rowId:rowId, employeeName:employeeName.trim(), branch:branch });
+    // Apply the server's authoritative version of the row (handled_by,
+    // status, branch, lastUpdated) instead of re-downloading every booking
+    // just to display this one change.
+    patchLocalRecord(rowId, res.record || { handled: employeeName.trim(), status:'Pending', branch });
+    render();
+  }catch(err){
+    alert(err.message);
+    render(); // undo the dropdown's optimistic-looking change using the (unmodified) local cache
+  }
+}
+
+async function updateStatus(rowId, status){
+  const rec = data.find(r => r.rowId === rowId);
+  const prev = rec ? rec.status : null;
+  if (rec) rec.status = status;
+  render();
+  try{
+    const res = await apiPost({ action:'updateStatus', rowId:rowId, status:status });
+    patchLocalRecord(rowId, res.record || { status });
+    render();
+  }catch(err){
+    alert(err.message);
+    if (rec) rec.status = prev;
+    render();
+  }
+}
+
+async function deleteTicket(rowId){
+  if (!confirm('Delete this ticket permanently?')) return;
+  try{
+    await apiPost({ action:'delete', rowId:rowId });
+    removeLocalRecord(rowId);
+    render();
+  }catch(err){
+    alert(err.message);
+  }
+}
+
+/* Duplicates an existing ticket into a brand-new row — same TR Number and
+   all other fields copied as-is, so a client's repeat request (e.g. the
+   same trip booked 4-5 times) doesn't need to be retyped from scratch.
+   The new row gets its own RowId/CreatedAt (via the normal 'create'
+   action), so it's independent going forward — editing or deleting the
+   copy never touches the original. Date is stamped to today since this
+   is a newly-created request, same as a fresh "+ New Request" submission. */
+async function duplicateTicket(r){
+  if (!confirm('Duplicate this ticket?\n\nClient: ' + (r.client || '') + '\nTR: ' + (r.tr || ''))) return;
+
+  const record = {
+    date: new Date().toISOString().split('T')[0],
+    client: r.client || '',
+    tr: r.tr || '',
+    city: r.city || '',
+    country: r.country || '',
+    vendor: r.vendor || '',
+    checkin: r.checkin || '',
+    checkout: r.checkout || '',
+    nights: r.nights || '',
+    bookingref: r.bookingref || '',
+    priority: r.priority || 'Normal',
+    status: r.status || 'Pending',
+    remarks: r.remarks || '',
+    handled: r.handled || '',
+    branch: r.branch || ''
+  };
+
+  try{
+    const res = await apiPost({ action:'create', record:record });
+    if (res.record) data.push(res.record);
+    render();
+  }catch(err){
+    alert('Could not duplicate ticket.\n\n' + (err.message || err));
+  }
+}
+
+async function clearAllFromSheet(){
+  const visible = visibleRecords();
+  if (visible.length === 0){ alert('Nothing to clear.'); return; }
+  const typed = prompt('This permanently deletes ALL ' + visible.length + ' visible record(s). Type DELETE to confirm.');
+  if (typed !== 'DELETE') return;
+  try{
+    for (const r of visible) { if (r.rowId) { await apiPost({ action:'delete', rowId:r.rowId }); removeLocalRecord(r.rowId); } }
+    render();
+    alert('Cleared.');
+  }catch(err){
+    alert('Something went wrong while clearing.\n\n' + err.message);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   EXPORT
+   --------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------
+   OVERDUE TICKET REVIEW — replaces the old silent auto-lost sweep.
+   Instead of automatically moving tickets to Lost on every refresh,
+   we detect overdue tickets client-side and show the Manager a list
+   to review before anything is changed.
+   --------------------------------------------------------------------- */
+
+const TERMINAL_STATUSES_CLIENT = ['Confirmed', 'Lost'];
+
+function getOverdueTickets(){
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return data.filter(r => {
+    if (TERMINAL_STATUSES_CLIENT.includes(r.status)) return false;
+    if (!r.checkin) return false;
+    const d = new Date(r.checkin);
+    return !isNaN(d.getTime()) && d < today;
+  });
+}
+
+let _lastOverdueCount = -1; // -1 = never checked this session
+
+/* Called after every render — drives both the toolbar ⚠ button and the
+   red notification banner at the top. Banner appears automatically when
+   overdue tickets are detected or the count increases; stays hidden after
+   dismiss until count changes (so background polls don't re-spam it). */
+function updateOverdueBadge(){
+  if (!currentUser) return;
+
+  const overdue = getOverdueTickets().filter(r =>
+    currentUser.allBranchAccess || !r.branch || r.branch === currentUser.branch
+  );
+  const count = overdue.length;
+
+  // Only a few named people (Users sheet: CanMarkLost = 'Yes') can actually
+  // move tickets to Lost — everyone else still sees the same overdue list,
+  // just with a "Review" label instead of "Review & Mark Lost", and
+  // reviewOverdue() below shows it read-only for them. The server enforces
+  // this too (see 'markLost' in doPost), so this is UI framing, not the
+  // actual security boundary.
+  const canAct = !!currentUser.canMarkLost;
+  const label = canAct ? 'Review & Mark Lost' : 'Review Overdue';
+
+  // Toolbar button
+  const btn = document.getElementById('overdueBtn');
+  if (btn) {
+    btn.textContent = `⚠ ${label} (${count})`;
+    btn.style.display = count > 0 ? '' : 'none';
+  }
+
+  // Notification banner — auto-shows when count > 0 and is new/changed
+  const banner = document.getElementById('overdueNotification');
+  const text   = document.getElementById('overdueNotifText');
+  const bannerBtn = document.getElementById('overdueBannerBtn');
+  if (bannerBtn) bannerBtn.textContent = label;
+  if (!banner || !text) return;
+
+  if (count > 0 && count !== _lastOverdueCount) {
+    const preview = overdue.slice(0, 3).map(r =>
+      `${r.client || '?'} (${r.tr || 'no TR'} · check-in ${toDisplayDate(r.checkin)})`
+    ).join(', ');
+    const more = count > 3 ? ` and ${count - 3} more` : '';
+    text.textContent = `${count} overdue ticket${count > 1 ? 's' : ''} with past check-in: ${preview}${more}`;
+    banner.style.display = 'flex';
+    _lastOverdueCount = count;
+  } else if (count === 0) {
+    banner.style.display = 'none';
+    _lastOverdueCount = 0;
+  }
+}
+
+function dismissOverdueNotif(){
+  const banner = document.getElementById('overdueNotification');
+  if (banner) banner.style.display = 'none';
+  // Keep _lastOverdueCount as-is so the banner doesn't reappear on
+  // the next background poll (same count). It will reappear only if
+  // a new overdue ticket shows up and the count increases.
+}
+
+async function reviewOverdue(){
+  const overdue = getOverdueTickets().filter(r =>
+    currentUser.allBranchAccess || !r.branch || r.branch === currentUser.branch
+  );
+
+  if (overdue.length === 0) {
+    alert('No overdue tickets found — all check-in dates are current.');
+    return;
+  }
+
+  // Build a readable list for the confirmation dialog
+  const lines = overdue.map(r =>
+    `• ${r.client || '(no client)'} — TR: ${r.tr || '(no TR)'} — Check-in: ${toDisplayDate(r.checkin)} — Status: ${r.status}`
+  ).join('\n');
+
+  if (!currentUser.canMarkLost) {
+    // Read-only for most people — they can see exactly what's overdue,
+    // but only specific team members (Users sheet: CanMarkLost = 'Yes')
+    // can actually move these to Lost.
+    alert(
+      `${overdue.length} ticket${overdue.length > 1 ? 's have' : ' has'} a check-in date that has already passed and ${overdue.length > 1 ? 'are' : 'is'} not yet Confirmed or Lost:\n\n` +
+      lines +
+      `\n\nOnly specific team members can mark these as Lost — please flag this to them if action is needed.`
+    );
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `The following ${overdue.length} ticket${overdue.length > 1 ? 's have' : ' has'} a check-in date that has already passed and ${overdue.length > 1 ? 'are' : 'is'} not yet Confirmed or Lost:\n\n` +
+    lines +
+    `\n\nMove all of these to Lost?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const res = await apiPost({ action: 'markLost' });
+    const moved = res.moved || [];
+    moved.forEach(m => { if (m.rowId) patchLocalRecord(m.rowId, { status: 'Lost', lastUpdated: new Date().toISOString() }); });
+    render();
+    const count = moved.length;
+    alert(`Done — ${count} ticket${count !== 1 ? 's' : ''} moved to Lost.`);
+  } catch(err) {
+    alert('Error marking tickets as Lost: ' + (err.message || err));
+  }
+}
+
+function exportToExcel(){
+  const visible = visibleRecords();
+  if (visible.length === 0){ alert('Nothing to export.'); return; }
+  if (typeof XLSX === 'undefined'){ alert('Excel library failed to load.'); return; }
+
+  const headers = ['Date','Client','TR Number','City','Country','Vendor','Check In','Check Out','Nights','Booking Ref','Handled By','Branch','Priority','Status','Remarks'];
+  const rows = visible.map(r => [r.date,r.client,r.tr,r.city,r.country,r.vendor,toDisplayDate(r.checkin),toDisplayDate(r.checkout),r.nights,r.bookingref,r.handled,r.branch,r.priority,r.status,r.remarks]);
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Tickets');
+  const today = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Travel_Operations_LGT_${today}.xlsx`);
+}
+
+/* ---------------------------------------------------------------------
+   DASHBOARD — per-branch, per-employee stats
+   --------------------------------------------------------------------- */
+
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+}
+
+/* Shifts a yyyy-MM-dd string by N days (negative goes backward) and
+   returns the result in the same format. Used by the Dashboard's day
+   navigation so it can step through real calendar dates without any
+   timezone drift creeping in from repeated Date object round-trips. */
+function isoDateOffset_(baseISO, deltaDays){
+  const [y, mo, d] = baseISO.split('-').map(Number);
+  const dt = new Date(y, mo - 1, d);
+  dt.setDate(dt.getDate() + deltaDays);
+  return dt.getFullYear() + '-' + pad2(dt.getMonth()+1) + '-' + pad2(dt.getDate());
+}
+
+function wasUpdatedOnDate_(r, dateISO){
+  if (!r.lastUpdated) return false;
+  // lastUpdated is "YYYY-MM-DD HH:mm:ss" — just compare the date portion
+  return String(r.lastUpdated).slice(0, 10) === dateISO;
+}
+
+/* Night shift runs 7:30 PM through 6 AM the next calendar day. A ticket
+   counts for a night-shift employee if its lastUpdated timestamp falls
+   anywhere in the window ANCHORED TO dateISO's evening — which is why
+   this can't just compare date strings; it has to compare actual moments
+   in time against a specific date's 7:30 PM–6 AM span, not necessarily
+   "tonight's". */
+function isInNightShiftWindowForDate_(lastUpdatedStr, dateISO){
+  if (!lastUpdatedStr) return false;
+
+  // Expected shape is "YYYY-MM-DD H:mm:ss" or "YYYY-MM-DD HH:mm:ss" — the
+  // hour may or may not be zero-padded (Sheets has been known to silently
+  // strip the leading zero, e.g. "1:20:22" instead of "01:20:22", if the
+  // cell ever got auto-converted into a real Date). New Date() on the
+  // un-padded ISO-style string ("2026-06-24T1:20:22") is not reliably
+  // parsed across engines, so parse the pieces directly instead of
+  // trusting the Date constructor with a string.
+  const m = String(lastUpdatedStr).trim().match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2}):(\d{2})/
+  );
+  if (!m) return false;
+  const [, y, mo, d, h, mi, s] = m;
+  const updated = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s));
+  if (isNaN(updated.getTime())) return false;
+
+  const [dy, dmo, dd] = dateISO.split('-').map(Number);
+  const windowStart = new Date(dy, dmo - 1, dd, 19, 30, 0, 0);
+  const windowEnd = new Date(windowStart);
+  windowEnd.setDate(windowEnd.getDate() + 1);
+  windowEnd.setHours(6, 0, 0, 0);
+
+  return updated >= windowStart && updated <= windowEnd;
+}
+
+function shiftForEmployee(name){
+  const match = (window._branchEmployees || []).find(e => e.name === name);
+  return (match && match.shift) || 'Day';
+}
+
+/* "Worked" = new requests actually CREATED on dateISO. For Day-shift staff
+   that's just a plain calendar-date compare on Date. For Night-shift
+   staff, the shift spans midnight, so a plain calendar-date check on Date
+   is wrong — a request logged at 9 PM on June 22 has Date=2026-06-22 but
+   is genuinely part of "that night's" work for someone on shift from
+   7:30 PM June 22 to 6 AM June 23. CreatedAt is stamped once, at creation,
+   and never changes again — unlike LastUpdated, which moves every time
+   the ticket is touched — so it's what night-shift staff are checked
+   against here, using the same window as Confirmed/Lost. */
+function wasCreatedOnDate_(r, dateISO){
+  const handlerShift = shiftForEmployee(r.handled);
+  if (handlerShift === 'Night') return isInNightShiftWindowForDate_(r.createdAt, dateISO);
+  if (!r.date) return false;
+  return String(r.date).slice(0, 10) === dateISO;
+}
+
+/* "This status-change happened in the employee's relevant window for
+   dateISO" — used for Confirmed/Lost, which are real timestamped events
+   (LastUpdated). Day-shift staff use the normal calendar day; Night-shift
+   staff use the 7:30PM-6AM window anchored to dateISO's evening. */
+function statusChangedOnDate_(r, dateISO){
+  const handlerShift = shiftForEmployee(r.handled);
+  if (handlerShift === 'Night') return isInNightShiftWindowForDate_(r.lastUpdated, dateISO);
+  return wasUpdatedOnDate_(r, dateISO);
+}
+
+/* Pure computation, shared by renderDashboard (on-screen) and
+   exportDashboardToExcel (download) so the two can never drift apart. */
+let selectedDashboardDateISO = todayISO(); // which day's activity the Dashboard tab is currently showing
+
+function dashboardPrevDay(){
+  // No back-limit — go as far back as there's data for. The data itself
+  // (not this navigation) is the only real boundary: a date with nothing
+  // recorded just shows "No activity on [date]" instead of being blocked.
+  selectedDashboardDateISO = isoDateOffset_(selectedDashboardDateISO, -1);
+  renderDashboard();
+}
+
+function dashboardNextDay(){
+  const today = todayISO();
+  if (selectedDashboardDateISO >= today) return; // can't navigate into the future
+  selectedDashboardDateISO = isoDateOffset_(selectedDashboardDateISO, 1);
+  renderDashboard();
+}
+
+function dashboardGoToday(){
+  selectedDashboardDateISO = todayISO();
+  renderDashboard();
+}
+
+function updateDashboardDateControls_(){
+  const label = document.getElementById('dashboardDateLabel');
+  if (label) label.textContent = toDisplayDate(selectedDashboardDateISO);
+
+  const nextBtn = document.getElementById('dashboardNextDayBtn');
+  if (nextBtn) nextBtn.disabled = selectedDashboardDateISO >= todayISO();
+
+  const todayBtn = document.getElementById('dashboardTodayBtn');
+  if (todayBtn) todayBtn.disabled = selectedDashboardDateISO === todayISO();
+}
+
+function computeDashboardStats(dateISO){
+  dateISO = dateISO || selectedDashboardDateISO;
+
+  // AllBranchAccess Managers see every branch (the dashboard already
+  // groups by branch, so this just produces one card per branch instead
+  // of being filtered down to one). Everyone else stays branch-locked,
+  // same as before.
+  const scoped = currentUser.allBranchAccess
+    ? data
+    : (currentUser.role === 'Manager'
+        ? data.filter(r => r.branch === currentUser.branch)
+        : data); // employees just see overall context; their own row is what matters
+
+  const newToday = scoped.filter(r => wasCreatedOnDate_(r, dateISO));
+  const statusEventsToday = scoped.filter(r => statusChangedOnDate_(r, dateISO));
+
+  const byBranch = {};
+  function ensureEmpBucket(branch, emp){
+    if (!byBranch[branch]) byBranch[branch] = {};
+    if (!byBranch[branch][emp]) byBranch[branch][emp] = { worked:0, confirmed:0, lost:0 };
+    return byBranch[branch][emp];
+  }
+
+  newToday.forEach(r => {
+    const branch = r.branch || '(Unassigned)';
+    const emp = r.handled || '(Unassigned)';
+    ensureEmpBucket(branch, emp).worked++;
+  });
+  statusEventsToday.forEach(r => {
+    const branch = r.branch || '(Unassigned)';
+    const emp = r.handled || '(Unassigned)';
+    const bucket = ensureEmpBucket(branch, emp);
+    if (r.status === 'Confirmed') bucket.confirmed++;
+    if (r.status === 'Lost') bucket.lost++;
+  });
+
+  const byClient = {};
+  function ensureClientBucket(client){
+    if (!byClient[client]) byClient[client] = { requests:0, lost:0 };
+    return byClient[client];
+  }
+  newToday.forEach(r => {
+    const client = r.client || '(Unknown client)';
+    ensureClientBucket(client).requests++;
+  });
+  statusEventsToday.forEach(r => {
+    if (r.status !== 'Lost') return;
+    const client = r.client || '(Unknown client)';
+    ensureClientBucket(client).lost++;
+  });
+
+  return { newToday, statusEventsToday, byBranch, byClient };
+}
+
+function renderDashboard(){
+  const container = document.getElementById('dashboardContent');
+  container.innerHTML = '';
+
+  updateDashboardDateControls_();
+
+  // Two distinct things, not one combined "activity" list:
+  //   - newToday: requests actually CREATED on the selected date (Worked)
+  //   - statusEventsToday: requests that hit Confirmed/Lost on the
+  //     selected date, by LastUpdated, regardless of when originally created
+  const { newToday, statusEventsToday, byBranch, byClient } = computeDashboardStats(selectedDashboardDateISO);
+
+  const isToday = selectedDashboardDateISO === todayISO();
+  const dayLabel = toDisplayDate(selectedDashboardDateISO);
+  const note = document.getElementById('dashboardDateNote');
+  if (note) {
+    note.textContent = (isToday ? "Showing today's activity only (" : "Showing activity for ") + dayLabel +
+      (isToday ? ')' : '') +
+      '. Worked = new requests created that day. Confirmed/Lost = status reached that day, even for older requests. Night-shift staff use a 7:30 PM–6 AM window for all three instead of the calendar day.';
+  }
+
+  if (newToday.length === 0 && statusEventsToday.length === 0){
+    container.innerHTML = '<p style="color:#4a5560">No activity on ' + dayLabel + '.</p>';
+    return;
+  }
+
+  /* ---- per-branch, per-employee ---- */
+  const branches = Object.keys(byBranch).sort();
+  branches.forEach(branch => {
+    const card = document.createElement('div');
+    card.className = 'dash-card card';
+    const h3 = document.createElement('h3');
+    h3.textContent = branch + ' — by employee';
+    card.appendChild(h3);
+
+    const employees = Object.keys(byBranch[branch]).sort();
+    employees.forEach(emp => {
+      const stats = byBranch[branch][emp];
+      const row = document.createElement('div');
+      row.className = 'dash-row';
+      row.innerHTML = '<span class="dash-name">' + escapeHtml(emp) + '</span><span class="dash-stats">Worked: <b>' + stats.worked + '</b> &nbsp; Confirmed: <b>' + stats.confirmed + '</b></span>';
+      card.appendChild(row);
+    });
+
+    container.appendChild(card);
+  });
+
+  const clientCard = document.createElement('div');
+  clientCard.className = 'dash-card card';
+  const clientH3 = document.createElement('h3');
+  clientH3.textContent = 'By Client';
+  clientCard.appendChild(clientH3);
+
+  Object.keys(byClient).sort().forEach(client => {
+    const stats = byClient[client];
+    const row = document.createElement('div');
+    row.className = 'dash-row';
+    row.innerHTML = '<span class="dash-name">' + escapeHtml(client) + '</span><span class="dash-stats">Requests: <b>' + stats.requests + '</b></span>';
+    clientCard.appendChild(row);
+  });
+
+  container.appendChild(clientCard);
+}
+
+/* ---------------------------------------------------------------------
+   DASHBOARD EXPORT — same numbers shown on screen, as a downloadable
+   .xlsx with one sheet per branch plus a client-summary sheet.
+   --------------------------------------------------------------------- */
+
+function exportDashboardToExcel(){
+  if (typeof XLSX === 'undefined'){ alert('Excel library failed to load.'); return; }
+
+  const { newToday, statusEventsToday, byBranch, byClient } = computeDashboardStats(selectedDashboardDateISO);
+
+  if (newToday.length === 0 && statusEventsToday.length === 0){
+    alert('No activity on ' + toDisplayDate(selectedDashboardDateISO) + ' — nothing to export.');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const todayLabel = toDisplayDate(selectedDashboardDateISO);
+
+  const branches = Object.keys(byBranch).sort();
+  branches.forEach(branch => {
+    const headers = ['Employee', 'Worked', 'Confirmed', 'Lost'];
+    const rows = Object.keys(byBranch[branch]).sort().map(emp => {
+      const s = byBranch[branch][emp];
+      return [emp, s.worked, s.confirmed, s.lost];
+    });
+    // Totals row
+    const totals = rows.reduce((acc, r) => [acc[0], acc[1]+r[1], acc[2]+r[2], acc[3]+r[3]], ['TOTAL', 0, 0, 0]);
+    rows.push(totals);
+
+    const ws = XLSX.utils.aoa_to_sheet([
+      [`Branch: ${branch} — Daily Performance (${todayLabel})`],
+      [],
+      headers,
+      ...rows
+    ]);
+    // Sheet names are capped at 31 chars and can't contain : \ / ? * [ ]
+    const safeName = branch.replace(/[:\\/?*[\]]/g, '').slice(0, 31) || 'Branch';
+    XLSX.utils.book_append_sheet(wb, ws, safeName);
+  });
+
+  const clientHeaders = ['Client', 'Requests', 'Lost'];
+  const clientRows = Object.keys(byClient).sort().map(client => {
+    const s = byClient[client];
+    return [client, s.requests, s.lost];
+  });
+  const clientWs = XLSX.utils.aoa_to_sheet([
+    [`By Client — Daily Performance (${todayLabel})`],
+    [],
+    clientHeaders,
+    ...clientRows
+  ]);
+  XLSX.utils.book_append_sheet(wb, clientWs, 'By Client');
+
+  const todayFile = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `LGT_Dashboard_${todayFile}.xlsx`);
+}
+
+/* ---------------------------------------------------------------------
+   CHARTS TAB — pie-chart metrics over a selectable period (this month
+   or all-time), as opposed to the Dashboard tab which is always "today".
+   --------------------------------------------------------------------- */
+
+function setChartsPeriod(period){
+  chartsPeriod = period;
+  document.getElementById('chartsPeriodMonth').classList.toggle('active', period === 'month');
+  document.getElementById('chartsPeriodAll').classList.toggle('active', period === 'all');
+  document.getElementById('chartsMonthPicker').value = ''; // This Month / All-Time always clear the specific-month picker
+  renderCharts();
+}
+
+function setChartsCustomMonth(value){
+  if (!value) { setChartsPeriod('month'); return; }
+  chartsPeriod = 'custom';
+  chartsCustomMonth = value; // 'YYYY-MM' from the <input type="month">
+  document.getElementById('chartsPeriodMonth').classList.remove('active');
+  document.getElementById('chartsPeriodAll').classList.remove('active');
+  renderCharts();
+}
+
+function formatMonthLabel(ym){
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const [y, m] = String(ym).split('-').map(Number);
+  return (MONTH_NAMES[m - 1] || '') + ' ' + y;
+}
+
+function isInChartsPeriod(r){
+  if (!r.date) return false;
+  if (chartsPeriod === 'all') return true;
+  if (chartsPeriod === 'custom') return String(r.date).slice(0, 7) === chartsCustomMonth;
+  // "This month" — plain calendar-month comparison against today, using
+  // the Date field (no shift-window complexity here; that's a same-day
+  // concern specific to the daily Dashboard tab, not a monthly rollup).
+  const now = new Date();
+  const thisMonthPrefix = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  return String(r.date).slice(0, 7) === thisMonthPrefix;
+}
+
+function computeChartStats(){
+  // Same branch-scoping rule as the daily Dashboard: AllBranchAccess users
+  // see everything, branch-locked Managers see only their own branch.
+  const scoped = currentUser.allBranchAccess
+    ? data
+    : data.filter(r => r.branch === currentUser.branch);
+
+  // Extra, employee-driven filters — on top of the fixed branch-access
+  // scoping above, not a replacement for it.
+  updateFilterNames_('charts_branch', scoped.map(r => r.branch));
+  updateFilterNames_('charts_employee', scoped.map(r => r.handled));
+  updateFilterNames_('charts_client', scoped.map(r => r.client));
+  const branchSet = getFilterSet_('charts_branch');
+  const empSet = getFilterSet_('charts_employee');
+  const clientSet = getFilterSet_('charts_client');
+
+  const filtered = scoped
+    .filter(r => branchSet.size === 0 || branchSet.has(r.branch))
+    .filter(r => empSet.size === 0 || empSet.has(r.handled))
+    .filter(r => clientSet.size === 0 || clientSet.has(r.client));
+
+  const inPeriod = filtered.filter(isInChartsPeriod);
+
+  const byBranch = {};      // branch -> total request count
+  const byEmployee = {};    // employee -> total request count
+  let closed = 0, lost = 0; // bookings closed (Confirmed) vs Lost
+  let nightsConfirmed = 0;  // sum of Nights for Confirmed bookings
+  const nightsByBranch = {}; // branch -> nights confirmed
+
+  inPeriod.forEach(r => {
+    const branch = r.branch || '(Unassigned)';
+    const emp = r.handled || '(Unassigned)';
+    byBranch[branch] = (byBranch[branch] || 0) + 1;
+    byEmployee[emp] = (byEmployee[emp] || 0) + 1;
+
+    if (r.status === 'Confirmed') {
+      closed++;
+      const n = Number(r.nights || 0);
+      nightsConfirmed += n;
+      nightsByBranch[branch] = (nightsByBranch[branch] || 0) + n;
+    }
+    if (r.status === 'Lost') lost++;
+  });
+
+  return { inPeriod, byBranch, byEmployee, closed, lost, nightsConfirmed, nightsByBranch };
+}
+
+const CHART_COLORS = ['#003366','#1b5e20','#D4AF37','#b71c1c','#6a1b9a','#ef6c00','#00838f','#5d4037','#827717','#37474f'];
+
+/* Builds one <path> per slice on a unit circle of radius `r` centered at
+   (cx,cy), starting at 12 o'clock and going clockwise — plain trig, no
+   charting library needed. Returns an SVG string. */
+function buildPieSvg(labelsAndValues, total){
+  const cx = 100, cy = 100, r = 90;
+  let angle = -Math.PI / 2; // start at 12 o'clock
+  const paths = [];
+
+  labelsAndValues.forEach(([label, value], i) => {
+    const frac = value / total;
+    const sweep = frac * Math.PI * 2;
+    const nextAngle = angle + sweep;
+
+    // A single slice spanning the full circle (e.g. only one non-zero
+    // category) can't be drawn as a single SVG arc — draw a full circle
+    // instead, since start point == end point in that case.
+    if (frac >= 0.999999) {
+      paths.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${CHART_COLORS[i % CHART_COLORS.length]}"><title>${escapeHtml(label)}: ${value}</title></circle>`);
+      return;
+    }
+
+    const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+    const x2 = cx + r * Math.cos(nextAngle), y2 = cy + r * Math.sin(nextAngle);
+    const largeArc = sweep > Math.PI ? 1 : 0;
+    const d = `M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+    paths.push(`<path d="${d}" fill="${CHART_COLORS[i % CHART_COLORS.length]}"><title>${escapeHtml(label)}: ${value}</title></path>`);
+
+    angle = nextAngle;
+  });
+
+  return `<svg viewBox="0 0 200 200" style="width:100%;height:100%;max-height:200px">${paths.join('')}</svg>`;
+}
+
+function buildLegendHtml(labelsAndValues, total){
+  return '<div class="chart-legend">' + labelsAndValues.map(([label, value], i) => {
+    const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+    return `<div class="chart-legend-row">
+      <span class="chart-legend-swatch" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></span>
+      <span class="chart-legend-label">${escapeHtml(label)}</span>
+      <span class="chart-legend-value">${value} (${pct}%)</span>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function makePieCard(grid, title, labelsAndValues, totalSuffix){
+  const card = document.createElement('div');
+  card.className = 'chart-card';
+  const total = labelsAndValues.reduce((sum, [, v]) => sum + v, 0);
+
+  if (total === 0) {
+    card.innerHTML = `<h3>${escapeHtml(title)}</h3><p style="color:#4a5560;text-align:center;padding:40px 0">No data for this period.</p>`;
+    grid.appendChild(card);
+    return;
+  }
+
+  card.innerHTML = `<h3>${escapeHtml(title)}</h3>
+    <div class="chart-wrap">${buildPieSvg(labelsAndValues, total)}</div>
+    ${buildLegendHtml(labelsAndValues, total)}
+    <div class="chart-total">Total: ${total}${totalSuffix ? ' ' + escapeHtml(totalSuffix) : ''}</div>`;
+  grid.appendChild(card);
+}
+
+function renderCharts(){
+  const stats = computeChartStats();
+  const grid = document.getElementById('chartsGrid');
+  grid.innerHTML = '';
+
+  const note = document.getElementById('chartsRangeNote');
+  const rangeLabel = chartsPeriod === 'all'
+    ? 'all time'
+    : chartsPeriod === 'custom'
+      ? formatMonthLabel(chartsCustomMonth)
+      : 'this calendar month';
+  if (note) note.textContent = `Showing ${rangeLabel}` + (currentUser.allBranchAccess ? ' · all branches' : ` · ${currentUser.branch || ''} branch`);
+
+  if (stats.inPeriod.length === 0) {
+    grid.innerHTML = '<p style="color:#4a5560">No requests in this period yet.</p>';
+    return;
+  }
+
+  makePieCard(grid, 'Branch-wise Performance',
+    Object.entries(stats.byBranch).sort((a,b) => b[1]-a[1]), 'requests');
+
+  makePieCard(grid, 'Employee-wise Performance',
+    Object.entries(stats.byEmployee).sort((a,b) => b[1]-a[1]), 'requests');
+
+  makePieCard(grid, 'Bookings Closed vs Lost',
+    [['Confirmed', stats.closed], ['Lost', stats.lost]], 'bookings');
+
+  makePieCard(grid, 'Nights Closed by Branch',
+    Object.entries(stats.nightsByBranch).sort((a,b) => b[1]-a[1]), 'nights');
+}
+
+/* ---------------------------------------------------------------------
+   LOAD BRANCH EMPLOYEES (for the Handled By dropdown — used by both roles)
+   --------------------------------------------------------------------- */
+
+async function loadBranchEmployees(){
+  try{
+    const json = await apiGet({ action:'users' });
+    const users = json.users || [];
+
+    // Always keep the FULL list around (used by assignTicket to look up
+    // which branch a chosen employee belongs to, regardless of whose
+    // dropdown they were picked from).
+    window._allBranchEmployees = users;
+
+    // AllBranchAccess users get everyone, across every branch, so they can
+    // actually assign work outside their own branch. Everyone else stays
+    // limited to their own branch, as before. Either way, Managers are now
+    // included alongside Employees — assignable work isn't an
+    // Employee-only thing, a Manager can be handed a ticket too.
+    const branchEmployees = currentUser.allBranchAccess
+      ? users.filter(u => u.role === 'Employee' || u.role === 'Manager')
+      : users.filter(u => (u.role === 'Employee' || u.role === 'Manager') && u.branch === currentUser.branch);
+
+    // Safety net: make sure the current user always appears as an option
+    // even if something about the Users sheet data doesn't match them
+    // exactly (e.g. a branch mismatch) — they should always be able to
+    // assign work to themselves.
+    const includesSelf = branchEmployees.some(u => u.name === currentUser.name);
+    window._branchEmployees = includesSelf
+      ? branchEmployees
+      : [{ name: currentUser.name, role: currentUser.role, branch: currentUser.branch, shift: currentUser.shift || 'Day' }, ...branchEmployees];
+  }catch(err){
+    console.error('Could not load employee list:', err);
+    window._branchEmployees = [{ name: currentUser.name, role: currentUser.role, branch: currentUser.branch, shift: currentUser.shift || 'Day' }];
+  }
+  populateAssignToDropdown();
+}
+
+/* ---------------------------------------------------------------------
+   CHANGE PASSWORD (self-service, any logged-in user)
+   --------------------------------------------------------------------- */
+
+function openChangePasswordModal(){
+  document.getElementById('cpCurrent').value = '';
+  document.getElementById('cpNew').value = '';
+  document.getElementById('cpConfirm').value = '';
+  document.getElementById('cpError').textContent = '';
+  document.getElementById('changePasswordModal').style.display = 'flex';
+}
+
+function closeChangePasswordModal(){
+  document.getElementById('changePasswordModal').style.display = 'none';
+}
+
+async function submitChangePassword(){
+  const currentPassword = document.getElementById('cpCurrent').value;
+  const newPassword = document.getElementById('cpNew').value;
+  const confirm = document.getElementById('cpConfirm').value;
+  const errEl = document.getElementById('cpError');
+  errEl.textContent = '';
+
+  if (!currentPassword || !newPassword) { errEl.textContent = 'Fill in both password fields.'; return; }
+  if (newPassword !== confirm) { errEl.textContent = 'New password and confirmation do not match.'; return; }
+  if (newPassword.length < 8) { errEl.textContent = 'New password must be at least 8 characters.'; return; }
+
+  try{
+    await apiPost({ action:'changePassword', currentPassword, newPassword });
+    closeChangePasswordModal();
+    alert('Password changed.');
+  }catch(err){
+    errEl.textContent = err.message || 'Could not change password.';
+  }
+}
+
+/* ---------------------------------------------------------------------
+   USERS ADMIN (manager-only) — add/edit/delete users and reset
+   passwords, so nobody needs direct database access for user upkeep.
+   --------------------------------------------------------------------- */
+
+let _usersAdminCache = [];
+
+async function loadUsersAdmin(){
+  const errEl = document.getElementById('usersAdminError');
+  errEl.textContent = '';
+  try{
+    const json = await apiGet({ action:'usersAdmin' });
+    _usersAdminCache = json.users || [];
+    renderUsersAdminTable();
+  }catch(err){
+    errEl.textContent = err.message || 'Could not load users.';
+  }
+}
+
+function renderUsersAdminTable(){
+  const tbody = document.getElementById('usersAdminBody');
+  tbody.innerHTML = _usersAdminCache.map(u => `
+    <tr>
+      <td style="padding:6px">${escapeHtml(u.name)}</td>
+      <td style="padding:6px">${escapeHtml(u.role)}</td>
+      <td style="padding:6px">${escapeHtml(u.branch||'')}</td>
+      <td style="padding:6px">${escapeHtml(u.shift||'Day')}</td>
+      <td style="padding:6px">${u.allBranchAccess ? '✅' : ''}</td>
+      <td style="padding:6px">${u.canMarkLost ? '✅' : ''}</td>
+      <td style="padding:6px">${u.canChangePaymentStatus ? '✅' : ''}</td>
+      <td style="padding:6px">${u.canManageUsers ? '✅' : ''}</td>
+      <td style="padding:6px;white-space:nowrap">
+        <button onclick="openEditUserModal('${cssEscape(u.name)}')" style="padding:5px 10px;font-size:12px">Edit</button>
+        <button onclick="openResetPasswordModal('${cssEscape(u.name)}')" style="padding:5px 10px;font-size:12px">Reset Pwd</button>
+        <button onclick="deleteUserAdmin('${cssEscape(u.name)}')" style="padding:5px 10px;font-size:12px;background:#b71c1c;color:white">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openAddUserModal(){
+  document.getElementById('userFormTitle').textContent = 'Add User';
+  document.getElementById('ufOriginalName').value = '';
+  document.getElementById('ufName').value = '';
+  document.getElementById('ufPassword').value = '';
+  document.getElementById('ufPasswordField').style.display = '';
+  document.getElementById('ufRole').value = 'Employee';
+  document.getElementById('ufBranch').value = '';
+  document.getElementById('ufShift').value = 'Day';
+  document.getElementById('ufAllBranch').checked = false;
+  document.getElementById('ufCanMarkLost').checked = false;
+  document.getElementById('ufCanPayment').checked = false;
+  document.getElementById('ufCanManageUsers').checked = false;
+  document.getElementById('userFormError').textContent = '';
+  document.getElementById('userFormModal').style.display = 'flex';
+}
+
+function openEditUserModal(name){
+  const u = _usersAdminCache.find(x => x.name === name);
+  if (!u) return;
+  document.getElementById('userFormTitle').textContent = 'Edit User';
+  document.getElementById('ufOriginalName').value = u.name;
+  document.getElementById('ufName').value = u.name;
+  // Password is changed via the dedicated Reset Password action, not here —
+  // editing a user's role/branch/etc. should never require re-entering a password.
+  document.getElementById('ufPasswordField').style.display = 'none';
+  document.getElementById('ufRole').value = u.role;
+  document.getElementById('ufBranch').value = u.branch || '';
+  document.getElementById('ufShift').value = u.shift || 'Day';
+  document.getElementById('ufAllBranch').checked = !!u.allBranchAccess;
+  document.getElementById('ufCanMarkLost').checked = !!u.canMarkLost;
+  document.getElementById('ufCanPayment').checked = !!u.canChangePaymentStatus;
+  document.getElementById('ufCanManageUsers').checked = !!u.canManageUsers;
+  document.getElementById('userFormError').textContent = '';
+  document.getElementById('userFormModal').style.display = 'flex';
+}
+
+function closeUserFormModal(){
+  document.getElementById('userFormModal').style.display = 'none';
+}
+
+async function submitUserForm(){
+  const errEl = document.getElementById('userFormError');
+  errEl.textContent = '';
+
+  const originalName = document.getElementById('ufOriginalName').value;
+  const name = document.getElementById('ufName').value.trim();
+  const role = document.getElementById('ufRole').value;
+  const branch = document.getElementById('ufBranch').value.trim();
+  const shift = document.getElementById('ufShift').value;
+  const allBranchAccess = document.getElementById('ufAllBranch').checked;
+  const canMarkLost = document.getElementById('ufCanMarkLost').checked;
+  const canChangePaymentStatus = document.getElementById('ufCanPayment').checked;
+  const canManageUsers = document.getElementById('ufCanManageUsers').checked;
+
+  if (!name) { errEl.textContent = 'Name is required.'; return; }
+
+  try{
+    if (!originalName) {
+      const password = document.getElementById('ufPassword').value;
+      if (!password || password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+      await apiPost({ action:'createUser', user:{ name, password, role, branch, shift, allBranchAccess, canMarkLost, canChangePaymentStatus, canManageUsers } });
+    } else {
+      await apiPost({ action:'updateUser', name: originalName, patch:{ newName:name, role, branch, shift, allBranchAccess, canMarkLost, canChangePaymentStatus, canManageUsers } });
+    }
+    closeUserFormModal();
+    await loadUsersAdmin();
+    await loadBranchEmployees(); // assignment dropdowns may reference this user
+  }catch(err){
+    errEl.textContent = err.message || 'Could not save user.';
+  }
+}
+
+async function deleteUserAdmin(name){
+  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  const errEl = document.getElementById('usersAdminError');
+  try{
+    await apiPost({ action:'deleteUser', name });
+    await loadUsersAdmin();
+  }catch(err){
+    errEl.textContent = err.message || 'Could not delete user.';
+  }
+}
+
+function openResetPasswordModal(name){
+  document.getElementById('rpTargetName').value = name;
+  document.getElementById('rpTargetLabel').textContent = 'New password for: ' + name;
+  document.getElementById('rpNew').value = '';
+  document.getElementById('rpConfirm').value = '';
+  document.getElementById('rpError').textContent = '';
+  document.getElementById('resetPasswordModal').style.display = 'flex';
+}
+
+function closeResetPasswordModal(){
+  document.getElementById('resetPasswordModal').style.display = 'none';
+}
+
+async function submitResetPassword(){
+  const targetName = document.getElementById('rpTargetName').value;
+  const newPassword = document.getElementById('rpNew').value;
+  const confirmPw = document.getElementById('rpConfirm').value;
+  const errEl = document.getElementById('rpError');
+  errEl.textContent = '';
+
+  if (!newPassword || newPassword.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if (newPassword !== confirmPw) { errEl.textContent = 'Passwords do not match.'; return; }
+
+  try{
+    await apiPost({ action:'resetPassword', targetName, newPassword });
+    closeResetPasswordModal();
+    alert(`Password reset for ${targetName}.`);
+  }catch(err){
+    errEl.textContent = err.message || 'Could not reset password.';
+  }
+}
+
+/* ---------------------------------------------------------------------
+   GENERIC EXCEL-STYLE MULTI-SELECT FILTER WIDGET
+   One reusable implementation, instantiated per "filterKey" (e.g.
+   "confirmed_client", "blocked_employee") — same search box / Select All
+   / checkbox list / Cancel-OK pattern as the Reconfirmations tab's client
+   filter, just generalized so it isn't duplicated four separate times.
+   --------------------------------------------------------------------- */
+
+const tabFilterSets_ = {};   // tabFilterSets_[filterKey] -> committed Set of selected values (empty = show all)
+const filterAllNames_ = {};  // filterAllNames_[filterKey] -> cached array of every available value
+const filterTemp_ = {};      // filterTemp_[filterKey]     -> working Set while its dropdown is open
+
+function getFilterSet_(filterKey){
+  if (!tabFilterSets_[filterKey]) tabFilterSets_[filterKey] = new Set();
+  return tabFilterSets_[filterKey];
+}
+
+function updateFilterNames_(filterKey, rawNames){
+  filterAllNames_[filterKey] = Array.from(new Set(rawNames.filter(Boolean))).sort();
+  updateFilterButtonLabel_(filterKey);
+}
+
+function buildFilterWidgetHtml_(filterKey, label){
+  return '<div id="filterContainer_' + filterKey + '" style="position:relative;display:inline-block;margin-right:10px;margin-bottom:12px">' +
+    '<button id="filterBtn_' + filterKey + '" data-base-label="' + label + '" onclick="toggleFilterPanel_(\'' + filterKey + '\')" ' +
+      'style="padding:7px 14px;border-radius:5px;border:1px solid #ccc;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:13px">' +
+      '<span>' + label + '</span><span style="font-size:10px">▼</span>' +
+    '</button>' +
+    '<div id="filterPanel_' + filterKey + '" style="display:none;position:absolute;top:110%;left:0;z-index:50;background:#fff;border:1px solid #ccc;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.18);width:240px;padding:10px">' +
+      '<input type="text" id="filterSearch_' + filterKey + '" placeholder="Search..." ' +
+        'style="width:100%;padding:6px;margin-bottom:8px;box-sizing:border-box;border:1px solid #ddd;border-radius:4px;font-size:13px" ' +
+        'oninput="renderFilterCheckboxList_(\'' + filterKey + '\', this.value)">' +
+      '<label style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #eee;margin-bottom:6px;font-weight:bold;font-size:13px;cursor:pointer">' +
+        '<input type="checkbox" id="filterSelectAll_' + filterKey + '" onchange="toggleFilterSelectAll_(\'' + filterKey + '\', this.checked)"> Select All' +
+      '</label>' +
+      '<div id="filterList_' + filterKey + '" style="max-height:180px;overflow-y:auto"></div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">' +
+        '<button onclick="cancelFilter_(\'' + filterKey + '\')" style="padding:5px 12px;border-radius:4px;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:13px">Cancel</button>' +
+        '<button onclick="applyFilter_(\'' + filterKey + '\')" style="padding:5px 12px;border-radius:4px;border:none;background:#003366;color:#fff;cursor:pointer;font-size:13px">OK</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function toggleFilterPanel_(filterKey){
+  const panel = document.getElementById('filterPanel_' + filterKey);
+  if (!panel) return;
+
+  const opening = panel.style.display === 'none' || !panel.style.display;
+  if (!opening) { panel.style.display = 'none'; return; }
+
+  const committed = getFilterSet_(filterKey);
+  const allNames = filterAllNames_[filterKey] || [];
+  filterTemp_[filterKey] = committed.size === 0 ? new Set(allNames) : new Set(committed);
+
+  const search = document.getElementById('filterSearch_' + filterKey);
+  if (search) search.value = '';
+  renderFilterCheckboxList_(filterKey, '');
+  panel.style.display = 'block';
+}
+
+function renderFilterCheckboxList_(filterKey, searchTerm){
+  const list = document.getElementById('filterList_' + filterKey);
+  if (!list) return;
+  list.innerHTML = '';
+
+  const term = (searchTerm || '').trim().toLowerCase();
+  const allNames = filterAllNames_[filterKey] || [];
+  const temp = filterTemp_[filterKey] || new Set();
+
+  allNames
+    .filter(name => !term || name.toLowerCase().includes(term))
+    .forEach(name => {
+      const label = document.createElement('label');
+      label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:3px 2px;cursor:pointer;font-size:13px';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = temp.has(name);
+      cb.onchange = () => {
+        if (cb.checked) temp.add(name); else temp.delete(name);
+        syncFilterSelectAll_(filterKey);
+      };
+      label.appendChild(cb);
+      label.append(' ' + name);
+      list.appendChild(label);
+    });
+
+  syncFilterSelectAll_(filterKey);
+}
+
+function syncFilterSelectAll_(filterKey){
+  const selectAll = document.getElementById('filterSelectAll_' + filterKey);
+  if (!selectAll) return;
+  const allNames = filterAllNames_[filterKey] || [];
+  const temp = filterTemp_[filterKey] || new Set();
+  selectAll.checked = allNames.length > 0 && allNames.every(n => temp.has(n));
+}
+
+function toggleFilterSelectAll_(filterKey, checked){
+  const allNames = filterAllNames_[filterKey] || [];
+  const temp = filterTemp_[filterKey] || new Set();
+  if (checked) allNames.forEach(n => temp.add(n));
+  else temp.clear();
+  filterTemp_[filterKey] = temp;
+  const search = document.getElementById('filterSearch_' + filterKey);
+  renderFilterCheckboxList_(filterKey, search ? search.value : '');
+}
+
+function applyFilter_(filterKey){
+  const allNames = filterAllNames_[filterKey] || [];
+  const temp = filterTemp_[filterKey] || new Set();
+  // Everyone checked == "no filter" (empty set) — so a brand-new client
+  // or employee later isn't silently excluded just for not existing yet
+  // when this filter was last saved.
+  const allSelected = allNames.length > 0 && allNames.every(n => temp.has(n));
+  tabFilterSets_[filterKey] = allSelected ? new Set() : new Set(temp);
+
+  document.getElementById('filterPanel_' + filterKey).style.display = 'none';
+  updateFilterButtonLabel_(filterKey);
+  render();
+}
+
+function cancelFilter_(filterKey){
+  document.getElementById('filterPanel_' + filterKey).style.display = 'none';
+}
+
+function updateFilterButtonLabel_(filterKey){
+  const btn = document.getElementById('filterBtn_' + filterKey);
+  if (!btn) return;
+  const span = btn.querySelector('span');
+  if (!span) return;
+  const baseLabel = btn.dataset.baseLabel || 'Filter';
+  const set = getFilterSet_(filterKey);
+  span.textContent = set.size === 0 ? baseLabel : (baseLabel + ' (' + set.size + ')');
+}
+
+document.addEventListener('click', function(e){
+  Object.keys(filterAllNames_).forEach(filterKey => {
+    const container = document.getElementById('filterContainer_' + filterKey);
+    const panel = document.getElementById('filterPanel_' + filterKey);
+    if (!container || !panel || panel.style.display === 'none') return;
+    if (!container.contains(e.target)) panel.style.display = 'none';
+  });
+});
+
+/* ---------------------------------------------------------------------
+   INIT
+   --------------------------------------------------------------------- */
+
+window.onload = function(){
+  const confirmedFiltersEl = document.getElementById('confirmedFiltersContainer');
+  if (confirmedFiltersEl) {
+    confirmedFiltersEl.innerHTML =
+      buildFilterWidgetHtml_('confirmed_client', 'Filter by Client') +
+      buildFilterWidgetHtml_('confirmed_employee', 'Filter by Employee');
+  }
+  const blockedFiltersEl = document.getElementById('blockedFiltersContainer');
+  if (blockedFiltersEl) {
+    blockedFiltersEl.innerHTML =
+      buildFilterWidgetHtml_('blocked_client', 'Filter by Client') +
+      buildFilterWidgetHtml_('blocked_employee', 'Filter by Employee');
+  }
+  const reconfirmFiltersEl = document.getElementById('reconfirmFiltersContainer');
+  if (reconfirmFiltersEl) {
+    reconfirmFiltersEl.innerHTML =
+      buildFilterWidgetHtml_('reconfirm_client', 'Filter by Client') +
+      buildFilterWidgetHtml_('reconfirm_employee', 'Filter by Employee');
+  }
+  const chartsFiltersEl = document.getElementById('chartsFiltersContainer');
+  if (chartsFiltersEl) {
+    chartsFiltersEl.innerHTML =
+      buildFilterWidgetHtml_('charts_branch', 'Filter by Branch') +
+      buildFilterWidgetHtml_('charts_employee', 'Filter by Employee') +
+      buildFilterWidgetHtml_('charts_client', 'Filter by Client');
+  }
+
+  tryResumeSession();
+};
+</script>
+</body>
+</html>
