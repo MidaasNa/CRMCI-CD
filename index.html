@@ -984,12 +984,11 @@ function renderTicketsTable(visible, searchTerm){
 
   emptyMsg.style.display = rows.length === 0 ? 'block' : 'none';
 
-  // Don't touch the row the user is actively typing/selecting in. Important:
-  // even just moving that row's DOM node through appendChild() — even if
-  // it ends up back in the same place — silently drops browser focus from
-  // whatever input was focused inside it. So the active row must stay
-  // completely untouched: never detached, never re-appended. Everything
-  // else gets rebuilt fresh as normal.
+  // Don't touch the row the user is actively typing/selecting in — moving
+  // its DOM node, even back to the same spot, silently drops focus from
+  // whatever input is focused inside it. In fact, while ANY row is being
+  // edited, skip rebuilding the table at all (see below) rather than just
+  // protecting this one row's node.
   const activeEl = document.activeElement;
   const activeRow = activeEl && tbody.contains(activeEl) ? activeEl.closest('tr') : null;
   const activeRowId = activeRow ? activeRow.dataset.rowid : null;
@@ -1000,10 +999,16 @@ function renderTicketsTable(visible, searchTerm){
     return;
   }
 
-  // Remove every row except the active one (if any)
-  Array.from(tbody.children).forEach(tr => {
-    if (tr !== activeRow) tr.remove();
-  });
+  // While a row is actively being edited, leave the ENTIRE table alone —
+  // not just that row's own DOM node. The table is sorted by request date,
+  // so a brand-new ticket can sort well above older in-progress bookings.
+  // Rebuilding the other rows around the active one (even without moving
+  // its own node) still re-sorts everything into its "correct" position,
+  // which visibly yanks the row the user is mid-edit on to a new spot on
+  // screen. Skip the whole rebuild here; the next render() after the user
+  // blurs out (or the next manual/auto refresh once they're done) will
+  // catch the table up to the latest order and data.
+  if (activeRowId) return;
 
   // Re-insert everything else in the correct order. Walk forward through
   // the target row list, inserting each new row immediately before
@@ -1011,12 +1016,9 @@ function renderTicketsTable(visible, searchTerm){
   // slot, skip insertion (it's already physically there) and just move
   // the cursor past it. insertBefore(node, null) appends at the end,
   // which naturally handles "active row is last" and "no active row".
-  let cursor = tbody.firstChild;
+  tbody.innerHTML = '';
+  let cursor = null;
   rows.forEach(r => {
-    if (activeRowId && r.rowId === activeRowId) {
-      cursor = activeRow.nextSibling;
-      return;
-    }
     const tr = buildTicketRow(r);
     tbody.insertBefore(tr, cursor);
   });
@@ -2578,26 +2580,35 @@ function computeChartStats(){
 
   const byBranch = {};      // branch -> total request count
   const byEmployee = {};    // employee -> total request count
-  let closed = 0, lost = 0; // bookings closed (Confirmed) vs Lost
+  let closed = 0, lost = 0, pending = 0; // bookings closed (Confirmed) vs Lost vs still Pending
   let nightsConfirmed = 0;  // sum of Nights for Confirmed bookings
-  const nightsByBranch = {}; // branch -> nights confirmed
+  const nightsByBranch = {};        // branch -> nights confirmed
+  const nightsByBranchPending = {}; // branch -> nights on bookings still Pending
+  const nightsByBranchLost = {};    // branch -> nights on bookings marked Lost
 
   inPeriod.forEach(r => {
     const branch = r.branch || '(Unassigned)';
     const emp = r.handled || '(Unassigned)';
     byBranch[branch] = (byBranch[branch] || 0) + 1;
     byEmployee[emp] = (byEmployee[emp] || 0) + 1;
+    const n = Number(r.nights || 0);
 
     if (r.status === 'Confirmed') {
       closed++;
-      const n = Number(r.nights || 0);
       nightsConfirmed += n;
       nightsByBranch[branch] = (nightsByBranch[branch] || 0) + n;
     }
-    if (r.status === 'Lost') lost++;
+    if (r.status === 'Pending') {
+      pending++;
+      nightsByBranchPending[branch] = (nightsByBranchPending[branch] || 0) + n;
+    }
+    if (r.status === 'Lost') {
+      lost++;
+      nightsByBranchLost[branch] = (nightsByBranchLost[branch] || 0) + n;
+    }
   });
 
-  return { inPeriod, byBranch, byEmployee, closed, lost, nightsConfirmed, nightsByBranch };
+  return { inPeriod, byBranch, byEmployee, closed, lost, pending, nightsConfirmed, nightsByBranch, nightsByBranchPending, nightsByBranchLost };
 }
 
 const CHART_COLORS = ['#003366','#1b5e20','#D4AF37','#b71c1c','#6a1b9a','#ef6c00','#00838f','#5d4037','#827717','#37474f'];
@@ -2646,7 +2657,7 @@ function buildLegendHtml(labelsAndValues, total){
   }).join('') + '</div>';
 }
 
-function makePieCard(grid, title, labelsAndValues, totalSuffix){
+function makePieCard(grid, title, labelsAndValues, totalSuffix, extraHtml){
   const card = document.createElement('div');
   card.className = 'chart-card';
   const total = labelsAndValues.reduce((sum, [, v]) => sum + v, 0);
@@ -2660,7 +2671,8 @@ function makePieCard(grid, title, labelsAndValues, totalSuffix){
   card.innerHTML = `<h3>${escapeHtml(title)}</h3>
     <div class="chart-wrap">${buildPieSvg(labelsAndValues, total)}</div>
     ${buildLegendHtml(labelsAndValues, total)}
-    <div class="chart-total">Total: ${total}${totalSuffix ? ' ' + escapeHtml(totalSuffix) : ''}</div>`;
+    <div class="chart-total">Total: ${total}${totalSuffix ? ' ' + escapeHtml(totalSuffix) : ''}</div>
+    ${extraHtml || ''}`;
   grid.appendChild(card);
 }
 
@@ -2688,11 +2700,15 @@ function renderCharts(){
   makePieCard(grid, 'Employee-wise Performance',
     Object.entries(stats.byEmployee).sort((a,b) => b[1]-a[1]), 'requests');
 
-  makePieCard(grid, 'Bookings Closed vs Lost',
-    [['Confirmed', stats.closed], ['Lost', stats.lost]], 'bookings');
+  makePieCard(grid, 'Bookings Confirmed vs Pending vs Lost',
+    [['Confirmed', stats.closed], ['Pending', stats.pending], ['Lost', stats.lost]], 'bookings');
+
+  const pendingNightsTotal = Object.values(stats.nightsByBranchPending).reduce((a, b) => a + b, 0);
+  const lostNightsTotal = Object.values(stats.nightsByBranchLost).reduce((a, b) => a + b, 0);
 
   makePieCard(grid, 'Nights Closed by Branch',
-    Object.entries(stats.nightsByBranch).sort((a,b) => b[1]-a[1]), 'nights');
+    Object.entries(stats.nightsByBranch).sort((a,b) => b[1]-a[1]), 'nights',
+    `<div class="chart-extra" style="margin-top:6px;color:#4a5560;font-size:13px">Pending: ${pendingNightsTotal} nights &nbsp;·&nbsp; Lost: ${lostNightsTotal} nights</div>`);
 }
 
 /* ---------------------------------------------------------------------
