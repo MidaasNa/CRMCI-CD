@@ -2598,7 +2598,7 @@ function computeChartStats(){
       nightsConfirmed += n;
       nightsByBranch[branch] = (nightsByBranch[branch] || 0) + n;
     }
-    if (r.status === 'Pending') {
+    if (r.status === 'Pending' || r.status === 'Waiting for Client Response') {
       pending++;
       nightsByBranchPending[branch] = (nightsByBranchPending[branch] || 0) + n;
     }
@@ -2701,14 +2701,14 @@ function renderCharts(){
     Object.entries(stats.byEmployee).sort((a,b) => b[1]-a[1]), 'requests');
 
   makePieCard(grid, 'Bookings Confirmed vs Pending vs Lost',
-    [['Confirmed', stats.closed], ['Pending', stats.pending], ['Lost', stats.lost]], 'bookings');
+    [['Confirmed', stats.closed], ['Pending / Waiting on Client', stats.pending], ['Lost', stats.lost]], 'bookings');
 
   const pendingNightsTotal = Object.values(stats.nightsByBranchPending).reduce((a, b) => a + b, 0);
   const lostNightsTotal = Object.values(stats.nightsByBranchLost).reduce((a, b) => a + b, 0);
 
   makePieCard(grid, 'Nights Closed by Branch',
     Object.entries(stats.nightsByBranch).sort((a,b) => b[1]-a[1]), 'nights',
-    `<div class="chart-extra" style="margin-top:6px;color:#4a5560;font-size:13px">Pending: ${pendingNightsTotal} nights &nbsp;·&nbsp; Lost: ${lostNightsTotal} nights</div>`);
+    `<div class="chart-extra" style="margin-top:6px;color:#4a5560;font-size:13px">Pending / Waiting on Client: ${pendingNightsTotal} nights &nbsp;·&nbsp; Lost: ${lostNightsTotal} nights</div>`);
 }
 
 /* ---------------------------------------------------------------------
