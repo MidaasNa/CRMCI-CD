@@ -192,7 +192,7 @@ tr.needs-details-row td{border-color:#e1cdec}
 <div id="missingDetailsNotification" style="display:none;background:#6a1b9a;color:white;padding:12px 18px;border-radius:0 0 8px 8px;margin-bottom:10px;align-items:center;gap:12px;flex-wrap:wrap">
   <span style="font-size:18px">📝</span>
   <span id="missingDetailsNotifText" style="flex:1;font-weight:bold;font-size:14px"></span>
-  <button onclick="switchTab('ticketsTab')" style="background:white;color:#6a1b9a;border:none;padding:6px 14px;border-radius:5px;font-weight:bold;cursor:pointer;font-size:13px">View Tickets</button>
+  <button onclick="showMissingDetailsTickets()" style="background:white;color:#6a1b9a;border:none;padding:6px 14px;border-radius:5px;font-weight:bold;cursor:pointer;font-size:13px">View Tickets</button>
   <button onclick="dismissMissingDetailsNotif()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 12px;border-radius:5px;cursor:pointer;font-size:13px">Dismiss</button>
 </div>
 
@@ -224,7 +224,7 @@ tr.needs-details-row td{border-color:#e1cdec}
 <button id="refreshBtn" onclick="refreshFromSheet(true)">🔄 Refresh Now</button>
 <button id="exportBtn" onclick="exportToExcel()">⬇ Export to Excel</button>
 <button id="overdueBtn" onclick="reviewOverdue()" style="background:#b71c1c;color:white;display:none">⚠ Review Overdue</button>
-<button id="missingDetailsBtn" onclick="switchTab('ticketsTab')" style="background:#6a1b9a;color:white;display:none">📝 Missing Details</button>
+<button id="missingDetailsBtn" onclick="showMissingDetailsTickets()" style="background:#6a1b9a;color:white;display:none">📝 Missing Details</button>
 <span id="syncStatus" class="sync-syncing">⏳ Connecting…</span>
 <button id="logoutBtn" onclick="logout()" style="float:right">Log Out</button>
 <button id="changePasswordBtn" onclick="openChangePasswordModal()" style="float:right;margin-right:8px">🔑 Change Password</button>
@@ -277,6 +277,10 @@ tr.needs-details-row td{border-color:#e1cdec}
   <button class="scope-btn active" data-scope="branch" onclick="setTicketScope('branch')">My Branch</button>
   <button class="scope-btn allbranch-only" data-scope="all" onclick="setTicketScope('all')" style="display:none">All Company</button>
   <span id="scopeNote" style="font-size:12px;color:#4a5560;margin-left:12px"></span>
+  <div id="missingDetailsFilterStrip" style="display:none;align-items:center;gap:8px;margin-top:8px;background:#f7f0fb;border:1px solid #e1cdec;border-radius:6px;padding:8px 12px">
+    <span style="font-size:13px;color:#4a1a63">📝 Showing only tickets missing details</span>
+    <button onclick="clearMissingDetailsFilter()" style="background:#6a1b9a;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px">Clear filter</button>
+  </div>
 </div>
 <div class="card" style="overflow-x:auto;margin-top:0">
 <table>
@@ -510,6 +514,7 @@ let activeTab = 'newTab';
 let chartsPeriod = 'month'; // 'month' | 'all' | 'custom'
 let chartsCustomMonth = null; // 'YYYY-MM', set when chartsPeriod === 'custom'
 let ticketViewScope = 'branch'; // 'mine' | 'branch' | 'all'
+let missingDetailsFilterActive = false; // set true by the Missing Details button/banner; cleared by picking the Tickets tab directly
 
 /* ---------------------------------------------------------------------
    AUTH
@@ -723,8 +728,22 @@ function startAutoRefresh(){
    TABS
    --------------------------------------------------------------------- */
 
+function showMissingDetailsTickets(){
+  switchTab('ticketsTab'); // clears any stale filter state and renders once
+  missingDetailsFilterActive = true;
+  render();
+}
+
+function clearMissingDetailsFilter(){
+  missingDetailsFilterActive = false;
+  render();
+}
+
 function switchTab(tabId){
   if ((tabId === 'dashboardTab' || tabId === 'chartsTab') && currentUser.role !== 'Manager') return;
+  // Navigating to Tickets via the plain tab button (not the Missing
+  // Details button/banner) means "show me everything again".
+  if (tabId === 'ticketsTab') missingDetailsFilterActive = false;
   activeTab = tabId;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tabId));
@@ -1025,9 +1044,16 @@ function renderTicketsTable(visible, searchTerm){
 
   const rows = visible
     .filter(r => r.status !== 'Lost' && r.status !== 'Confirmed')
-    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm));
+    .filter(r => !searchTerm || rowSearchText(r).includes(searchTerm))
+    .filter(r => !missingDetailsFilterActive || needsDetailsReminder(r));
+
+  const filterStrip = document.getElementById('missingDetailsFilterStrip');
+  if (filterStrip) filterStrip.style.display = missingDetailsFilterActive ? 'flex' : 'none';
 
   emptyMsg.style.display = rows.length === 0 ? 'block' : 'none';
+  emptyMsg.textContent = missingDetailsFilterActive
+    ? 'Nothing missing details right now.'
+    : (searchTerm ? 'No tickets match your search.' : 'No tickets to show.');
 
   // Don't touch the row the user is actively typing/selecting in — moving
   // its DOM node, even back to the same spot, silently drops focus from
