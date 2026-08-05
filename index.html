@@ -631,13 +631,43 @@ async function apiPost(payload){
   return json;
 }
 
+function getActiveEditRowId(){
+  const activeEl = document.activeElement;
+  if (!activeEl || !activeEl.closest) return null;
+  const tr = activeEl.closest('tr[data-rowid]');
+  return tr ? tr.dataset.rowid : null;
+}
+
+function mergeFreshRecords(freshRecords){
+  const protectedRowId = getActiveEditRowId();
+
+  if (!protectedRowId) {
+    data = freshRecords;
+    return;
+  }
+
+  // A field in this row is actively focused right now. A field the user
+  // just typed (e.g. Check In) may not have finished saving to the server
+  // yet — if we swapped the whole array for this fetch's response, we'd
+  // silently overwrite that not-yet-persisted local edit with the older
+  // server value, which is exactly what was breaking the automatic
+  // Nights calculation (it needs both Check In AND Check Out present on
+  // the SAME local record to fire). Keep this one row's current local
+  // copy untouched; everything else still updates normally.
+  const protectedRec = data.find(r => r.rowId === protectedRowId);
+  data = freshRecords.map(r => r.rowId === protectedRowId && protectedRec ? protectedRec : r);
+  if (protectedRec && !data.some(r => r.rowId === protectedRowId)) {
+    data.push(protectedRec); // e.g. brand new row the server hasn't reflected back yet
+  }
+}
+
 async function refreshFromSheet(showSpinner){
   if (isSyncing || !currentUser) return;
   isSyncing = true;
   if (showSpinner) setSyncStatus('syncing', '⏳ Syncing…');
   try{
     const json = await apiGet({ action:'records' });
-    data = json.records || [];
+    mergeFreshRecords(json.records || []);
   }catch(err){
     console.error('Sync error:', err);
     setSyncStatus('error', '🔴 Sync failed — check connection');
@@ -989,9 +1019,7 @@ function renderTicketsTable(visible, searchTerm){
   // whatever input is focused inside it. In fact, while ANY row is being
   // edited, skip rebuilding the table at all (see below) rather than just
   // protecting this one row's node.
-  const activeEl = document.activeElement;
-  const activeRow = activeEl && tbody.contains(activeEl) ? activeEl.closest('tr') : null;
-  const activeRowId = activeRow ? activeRow.dataset.rowid : null;
+  const activeRowId = getActiveEditRowId();
 
   if (rows.length === 0) {
     if (activeRowId) return; // mid-edit on a row that's been filtered out (e.g. search) — leave it alone
@@ -1994,6 +2022,20 @@ async function assignTicket(rowId, employeeName){
 
 async function updateStatus(rowId, status){
   const rec = data.find(r => r.rowId === rowId);
+
+  if (status === 'Confirmed' && rec) {
+    const missing = [];
+    if (!rec.city) missing.push('City');
+    if (!rec.country) missing.push('Country');
+    if (!rec.checkin) missing.push('Check In');
+    if (!rec.checkout) missing.push('Check Out');
+    if (missing.length) {
+      alert(`Fill in ${missing.join(', ')} before marking this Confirmed.`);
+      render(); // revert the dropdown back to the actual (unchanged) status
+      return;
+    }
+  }
+
   const prev = rec ? rec.status : null;
   if (rec) rec.status = status;
   render();
