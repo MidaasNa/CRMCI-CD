@@ -362,6 +362,7 @@ tr.needs-details-row td{border-color:#e1cdec}
 <p style="color:#3f4750">Confirmed bookings whose Check In is <b>tomorrow</b> appear here — call the hotel to reconfirm, then fill in all three fields below. A row turns green once Reconfirmed, Designation By, and the Hotel Confirmation Number are all filled in. Regardless of whether it was completed or not, a booking automatically drops off this list the day after its Check In date.</p>
 <div class="card" style="overflow-x:auto">
 <div id="reconfirmFiltersContainer"></div>
+<button onclick="exportReconfirmationReport()" style="background:#00838f;color:white;padding:8px 16px;margin-bottom:12px">⬇ Export Reconfirmation Report (Past Bookings)</button>
 <table>
 <thead>
 <tr>
@@ -2371,6 +2372,38 @@ async function reviewOverdue(){
   } catch(err) {
     alert('Error marking tickets as Lost: ' + (err.message || err));
   }
+}
+
+/* Historical audit report — everything the live Reconfirmations tab can
+   no longer show, since a booking drops off that tab the day after its
+   Check In date regardless of whether it was ever reconfirmed. This
+   covers every Confirmed booking whose Check Out has already passed, so
+   past gaps (never reconfirmed) are visible after the fact, not just
+   while a booking is still upcoming. */
+function exportReconfirmationReport(){
+  if (typeof XLSX === 'undefined'){ alert('Excel library failed to load.'); return; }
+
+  const todayISOStr = todayISO();
+  const past = data.filter(r =>
+    r.status === 'Confirmed' && r.checkout && String(r.checkout) < todayISOStr
+  );
+
+  if (past.length === 0){ alert('No past bookings to report on yet.'); return; }
+
+  past.sort((a, b) => String(b.checkout).localeCompare(String(a.checkout))); // most recent checkout first
+
+  const headers = ['Date','Client','TR Number','City','Country','Check In','Check Out','Handled By','Branch','Reconfirmed','Designation By','Hotel Confirmation Number','Reconfirmation Status'];
+  const rows = past.map(r => [
+    r.date, r.client, r.tr, r.city, r.country,
+    toDisplayDate(r.checkin), toDisplayDate(r.checkout), r.handled, r.branch,
+    r.reconfirmed || '', r.reconfirmedBy || '', r.hotelConfirmationNumber || '',
+    isReconfirmRowComplete_(r) ? 'Complete' : 'Incomplete'
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Reconfirmation Report');
+  XLSX.writeFile(wb, `Reconfirmation_Report_${todayISOStr}.xlsx`);
 }
 
 function exportToExcel(){
