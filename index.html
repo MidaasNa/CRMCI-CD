@@ -225,6 +225,7 @@ tr.needs-details-row td{border-color:#e1cdec}
 <button id="exportBtn" onclick="exportToExcel()">⬇ Export to Excel</button>
 <button id="overdueBtn" onclick="reviewOverdue()" style="background:#b71c1c;color:white;display:none">⚠ Review Overdue</button>
 <button id="missingDetailsBtn" onclick="showMissingDetailsTickets()" style="background:#6a1b9a;color:white;display:none">📝 Missing Details</button>
+<button id="notReconfirmedBtn" onclick="switchTab('reconfirmTab')" style="background:#00838f;color:white;display:none">📞 Not Reconfirmed</button>
 <span id="syncStatus" class="sync-syncing">⏳ Connecting…</span>
 <button id="logoutBtn" onclick="logout()" style="float:right">Log Out</button>
 <button id="changePasswordBtn" onclick="openChangePasswordModal()" style="float:right;margin-right:8px">🔑 Change Password</button>
@@ -976,6 +977,7 @@ function render(){
 
   updateOverdueBadge();
   updateMissingDetailsBadge();
+  updateNotReconfirmedBadge();
   updateBlockedDeadlineBanner();
 }
 
@@ -2228,6 +2230,30 @@ function dismissMissingDetailsNotif(){
   if (banner) banner.style.display = 'none';
   // Same as dismissOverdueNotif() — keep the count as-is so it doesn't
   // reappear on the next background poll unless the count actually grows.
+}
+
+// Same eligibility rule as the Reconfirmations tab itself (Confirmed +
+// Check In is tomorrow), narrowed to rows that aren't fully reconfirmed
+// yet (see isReconfirmRowComplete_ above).
+function getNotReconfirmedTickets(){
+  return data.filter(r =>
+    r.status === 'Confirmed' && isCheckInTomorrow_(r.checkin) && !isReconfirmRowComplete_(r)
+  );
+}
+
+function updateNotReconfirmedBadge(){
+  if (!currentUser) return;
+
+  const needing = getNotReconfirmedTickets().filter(r =>
+    currentUser.allBranchAccess || !r.branch || r.branch === currentUser.branch
+  );
+  const count = needing.length;
+
+  const btn = document.getElementById('notReconfirmedBtn');
+  if (btn) {
+    btn.textContent = `📞 Not Reconfirmed (${count})`;
+    btn.style.display = count > 0 ? '' : 'none';
+  }
 }
 
 function getOverdueTickets(){
